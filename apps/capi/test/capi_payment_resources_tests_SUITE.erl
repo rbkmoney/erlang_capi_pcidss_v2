@@ -80,7 +80,7 @@ groups() ->
     config().
 init_per_suite(Config) ->
     C = capi_ct_helper:init_suite(?MODULE, Config),
-        {ok, Token} = capi_ct_helper:issue_token([{[payment_resources], write}], unlimited),
+    {ok, Token} = capi_ct_helper:issue_token([{[payment_resources], write}], unlimited),
     [{context, capi_ct_helper:get_context(Token)} | C].
 
 -spec end_per_suite(config()) ->
