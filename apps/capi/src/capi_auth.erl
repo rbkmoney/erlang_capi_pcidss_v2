@@ -111,7 +111,7 @@ authorize_operation(OperationID, Req, {{_SubjectID, ACL}, _}) ->
     capi_authorizer_jwt:token().
 issue_access_token(PartyID, TokenSpec) ->
     {Claims, ACL, Expiration} = resolve_token_spec(TokenSpec),
-    capi_utils:unwrap(capi_authorizer_jwt:issue({{PartyID, capi_acl:from_list(ACL)}, Claims}, Expiration)).
+    genlib:unwrap(capi_authorizer_jwt:issue({{PartyID, capi_acl:from_list(ACL)}, Claims}, Expiration)).
 
 -type acl() :: [{capi_acl:scope(), capi_acl:permission()}].
 

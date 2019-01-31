@@ -207,7 +207,7 @@ process_put_card_data_result(
     {
         {bank_card, BankCard#domain_BankCard{
             payment_system = PaymentSystem,
-            masked_pan     = capi_utils:define(Last4, BankCard#domain_BankCard.masked_pan),
+            masked_pan     = genlib:define(Last4, BankCard#domain_BankCard.masked_pan),
             token_provider = get_payment_token_provider(PaymentDetails, PaymentData)
         }},
         SessionID

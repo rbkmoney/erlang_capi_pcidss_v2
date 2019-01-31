@@ -98,7 +98,7 @@ decode_digital_wallet_details(#domain_DigitalWallet{provider = qiwi, id = ID}, V
     }.
 
 mask_phone_number(PhoneNumber) ->
-    capi_utils:redact(PhoneNumber, <<"^\\+\\d(\\d{1,10}?)\\d{2,4}$">>).
+    genlib_string:redact(PhoneNumber, <<"^\\+\\d(\\d{1,10}?)\\d{2,4}$">>).
 
 -spec decode_disposable_payment_resource(capi_handler_encoder:encode_data()) ->
     capi_handler_decoder:decode_data().
