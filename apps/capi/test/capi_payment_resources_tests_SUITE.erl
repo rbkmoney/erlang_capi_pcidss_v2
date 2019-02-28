@@ -24,19 +24,38 @@
 
 -export([
     create_visa_payment_resource_ok_test/1,
+    create_visa_with_empty_cvv_ok_test/1,
     create_nspkmir_payment_resource_ok_test/1,
     create_euroset_payment_resource_ok_test/1,
     create_qw_payment_resource_ok_test/1,
     create_applepay_tokenized_payment_resource_ok_test/1,
     create_googlepay_tokenized_payment_resource_ok_test/1,
-    create_googlepay_plain_payment_resource_ok_test/1
+    create_googlepay_plain_payment_resource_ok_test/1,
+
+    authorization_positive_lifetime_ok_test/1,
+    authorization_unlimited_lifetime_ok_test/1,
+    authorization_far_future_deadline_ok_test/1,
+    authorization_error_no_header_test/1,
+    authorization_error_no_permission_test/1,
+    authorization_bad_token_error_test/1
 ]).
 
 -define(CAPI_PORT                   , 8080).
 -define(CAPI_HOST_NAME              , "localhost").
 -define(CAPI_URL                    , ?CAPI_HOST_NAME ++ ":" ++ integer_to_list(?CAPI_PORT)).
 
--define(badresp(Code), {error, {invalid_response_code, Code}}).
+-define(TEST_PAYMENT_TOOL_ARGS, #{
+    <<"paymentTool">> => #{
+        <<"paymentToolType">> => <<"CardData">>,
+        <<"cardNumber">> => <<"4111111111111111">>,
+        <<"cardHolder">> => <<"Alexander Weinerschnitzel">>,
+        <<"expDate">> => <<"08/27">>,
+        <<"cvv">> => <<"232">>
+    },
+    <<"clientInfo">> => #{<<"fingerprint">> => <<"test fingerprint">>}
+}).
+
+-define(badresp(Code), {error, {Code, #{}}}).
 
 -type test_case_name()  :: atom().
 -type config()          :: [{atom(), any()}].
@@ -63,12 +82,20 @@ groups() ->
         {payment_resources, [],
             [
                 create_visa_payment_resource_ok_test,
+                create_visa_with_empty_cvv_ok_test,
                 create_nspkmir_payment_resource_ok_test,
                 create_euroset_payment_resource_ok_test,
                 create_qw_payment_resource_ok_test,
                 create_applepay_tokenized_payment_resource_ok_test,
                 create_googlepay_tokenized_payment_resource_ok_test,
-                create_googlepay_plain_payment_resource_ok_test
+                create_googlepay_plain_payment_resource_ok_test,
+
+                authorization_positive_lifetime_ok_test,
+                authorization_unlimited_lifetime_ok_test,
+                authorization_far_future_deadline_ok_test,
+                authorization_error_no_header_test,
+                authorization_error_no_permission_test,
+                authorization_bad_token_error_test
             ]
         }
     ].
@@ -153,6 +180,48 @@ create_visa_payment_resource_ok_test(Config) ->
             <<"cardHolder">> => <<"Alexander Weinerschnitzel">>,
             <<"expDate">> => <<"08/27">>,
             <<"cvv">> => <<"232">>
+        },
+        <<"clientInfo">> => ClientInfo
+    }).
+
+-spec create_visa_with_empty_cvv_ok_test(_) ->
+    _.
+create_visa_with_empty_cvv_ok_test(Config) ->
+    capi_ct_helper:mock_services([
+        {cds_storage, fun
+            ('PutCardData', [
+                #'CardData'{pan = <<"411111", _:6/binary, Mask:4/binary>>},
+                #'SessionData'{
+                    auth_data = {card_security_code, #'CardSecurityCode'{
+                        value = <<>>
+                    }}
+                }
+            ]) ->
+                {ok, #'PutCardDataResult'{
+                    bank_card = #domain_BankCard{
+                        token = ?STRING,
+                        payment_system = visa,
+                        bin = <<"411111">>,
+                        masked_pan = Mask
+                    },
+                    session_id = ?STRING
+                }}
+        end},
+        {binbase, fun('Lookup', _) -> {ok, ?BINBASE_LOOKUP_RESULT(<<"VISA">>)} end}
+    ], Config),
+    ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
+    {ok, #{<<"paymentToolDetails">> := #{
+        <<"detailsType">> := <<"PaymentToolDetailsBankCard">>,
+        <<"paymentSystem">> := <<"visa">>,
+        <<"lastDigits">> := <<"1111">>,
+        <<"bin">> := <<"411111">>,
+        <<"cardNumberMask">> := <<"411111******1111">>
+    }}} = capi_client_tokens:create_payment_resource(?config(context, Config), #{
+        <<"paymentTool">> => #{
+            <<"paymentToolType">> => <<"CardData">>,
+            <<"cardNumber">> => <<"4111111111111111">>,
+            <<"cardHolder">> => <<"Alexander Weinerschnitzel">>,
+            <<"expDate">> => <<"08/27">>
         },
         <<"clientInfo">> => ClientInfo
     }).
@@ -309,3 +378,103 @@ create_googlepay_plain_payment_resource_ok_test(Config) ->
             <<"clientInfo">> => ClientInfo
         }),
     false = maps:is_key(<<"tokenProvider">>, Details).
+
+%%
+
+-spec authorization_positive_lifetime_ok_test(config()) ->
+    _.
+authorization_positive_lifetime_ok_test(Config) ->
+    capi_ct_helper:mock_services([
+        {cds_storage, fun ('PutCardData', _) -> {ok, ?PUT_CARD_DATA_RESULT} end},
+        {binbase, fun('Lookup', _) -> {ok, ?BINBASE_LOOKUP_RESULT(<<"VISA">>)} end}
+    ], Config),
+    {ok, Token} = capi_ct_helper:issue_token([{[payment_resources], write}], {lifetime, 10}),
+    {ok, _} = capi_client_tokens:create_payment_resource(
+        capi_ct_helper:get_context(Token),
+        ?TEST_PAYMENT_TOOL_ARGS
+    ).
+
+-spec authorization_unlimited_lifetime_ok_test(config()) ->
+    _.
+authorization_unlimited_lifetime_ok_test(Config) ->
+    capi_ct_helper:mock_services([
+        {cds_storage, fun ('PutCardData', _) -> {ok, ?PUT_CARD_DATA_RESULT} end},
+        {binbase, fun('Lookup', _) -> {ok, ?BINBASE_LOOKUP_RESULT(<<"VISA">>)} end}
+    ], Config),
+    {ok, Token} = capi_ct_helper:issue_token([{[payment_resources], write}], unlimited),
+    {ok, _} = capi_client_tokens:create_payment_resource(
+        capi_ct_helper:get_context(Token),
+        ?TEST_PAYMENT_TOOL_ARGS
+    ).
+
+-spec authorization_far_future_deadline_ok_test(config()) ->
+    _.
+authorization_far_future_deadline_ok_test(Config) ->
+    capi_ct_helper:mock_services([
+        {cds_storage, fun ('PutCardData', _) -> {ok, ?PUT_CARD_DATA_RESULT} end},
+        {binbase, fun('Lookup', _) -> {ok, ?BINBASE_LOOKUP_RESULT(<<"VISA">>)} end}
+    ], Config),
+    {ok, Token} = capi_ct_helper:issue_token([{[payment_resources], write}], {deadline, 4102444800}), % 01/01/2100 @ 12:00am (UTC)
+    {ok, _} = capi_client_tokens:create_payment_resource(
+        capi_ct_helper:get_context(Token),
+        ?TEST_PAYMENT_TOOL_ARGS
+    ).
+
+-spec authorization_error_no_header_test(config()) ->
+    _.
+authorization_error_no_header_test(_Config) ->
+    Token = <<>>,
+    ?badresp(401) = capi_client_tokens:create_payment_resource(
+        capi_ct_helper:get_context(Token),
+        ?TEST_PAYMENT_TOOL_ARGS
+    ).
+
+-spec authorization_error_no_permission_test(config()) ->
+    _.
+authorization_error_no_permission_test(_Config) ->
+    {ok, Token} = capi_ct_helper:issue_token([{[payment_resources], read}], {lifetime, 10}),
+    ?badresp(401) = capi_client_tokens:create_payment_resource(
+        capi_ct_helper:get_context(Token),
+        ?TEST_PAYMENT_TOOL_ARGS
+    ).
+
+-spec authorization_bad_token_error_test(config()) ->
+    _.
+authorization_bad_token_error_test(Config) ->
+    {ok, Token} = issue_dummy_token([{[payment_resources], write}], Config),
+    ?badresp(401) = capi_client_tokens:create_payment_resource(
+        capi_ct_helper:get_context(Token),
+        ?TEST_PAYMENT_TOOL_ARGS
+    ).
+
+%%
+
+issue_dummy_token(ACL, Config) ->
+    Claims = #{
+        <<"jti">> => unique_id(),
+        <<"sub">> => <<"TEST">>,
+        <<"exp">> => 0,
+        <<"resource_access">> => #{
+            <<"common-api">> => #{
+                <<"roles">> => uac_acl:encode(uac_acl:from_list(ACL))
+            }
+        }
+    },
+    BadPemFile = get_keysource("keys/local/dummy.pem", Config),
+    BadJWK = jose_jwk:from_pem_file(BadPemFile),
+    GoodPemFile = get_keysource("keys/local/private.pem", Config),
+    GoodJWK = jose_jwk:from_pem_file(GoodPemFile),
+    JWKPublic = jose_jwk:to_public(GoodJWK),
+    {_Module, PublicKey} = JWKPublic#jose_jwk.kty,
+    {_PemEntry, Data, _} = public_key:pem_entry_encode('SubjectPublicKeyInfo', PublicKey),
+    KID = base64url:encode(crypto:hash(sha256, Data)),
+    JWT = jose_jwt:sign(BadJWK, #{<<"alg">> => <<"RS256">>, <<"kid">> => KID}, Claims),
+    {_Modules, Token} = jose_jws:compact(JWT),
+    {ok, Token}.
+
+get_keysource(Key, Config) ->
+    filename:join(?config(data_dir, Config), Key).
+
+unique_id() ->
+    <<ID:64>> = snowflake:new(),
+    genlib_format:format_int_base(ID, 62).
