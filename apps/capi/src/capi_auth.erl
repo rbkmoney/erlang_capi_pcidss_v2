@@ -30,7 +30,8 @@ issue_access_token(PartyID, TokenSpec) ->
         uac_authorizer_jwt:issue(
             UniqueId,
             Expiration,
-            {{PartyID, uac_acl:from_list(ACL)}, Claims},
+            {PartyID, uac_acl:from_list(ACL)},
+            Claims,
             capi_pcidss
         )
     ).

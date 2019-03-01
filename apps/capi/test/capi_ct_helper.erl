@@ -131,7 +131,8 @@ issue_token(PartyID, ACL, LifeTime) ->
         uac_authorizer_jwt:issue(
             UniqueId,
             LifeTime,
-            {{PartyID, uac_acl:from_list(ACL)}, Claims},
+            {PartyID, uac_acl:from_list(ACL)},
+            Claims,
             capi_pcidss
         )
     ).
