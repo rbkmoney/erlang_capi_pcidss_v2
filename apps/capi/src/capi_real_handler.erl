@@ -35,7 +35,16 @@
 
 authorize_api_key(OperationID, ApiKey) ->
     _ = capi_utils:logtag_process(operation_id, OperationID),
-    capi_auth:authorize_api_key(OperationID, ApiKey).
+    VerificationOpts = get_verification_opts(),
+    case uac:authorize_api_key(ApiKey, VerificationOpts) of
+        {ok, Context} ->
+            {true, Context};
+        {error, _Error} ->
+            false
+    end.
+
+get_verification_opts() ->
+    #{}.
 
 -type request_data() :: #{atom() | binary() => term()}.
 
@@ -49,7 +58,8 @@ authorize_api_key(OperationID, ApiKey) ->
 handle_request(OperationID, Req, Context) ->
     _ = lager:info("Processing request ~p", [OperationID]),
     try
-        case capi_auth:authorize_operation(OperationID, Req, get_auth_context(Context)) of
+        OperationACL = capi_auth:get_operation_access(OperationID, Req),
+        case uac:authorize_operation(OperationACL, get_auth_context(Context)) of
             ok ->
                 ReqContext = create_context(Req, get_auth_context(Context)),
                 process_request(OperationID, Req, Context, ReqContext);

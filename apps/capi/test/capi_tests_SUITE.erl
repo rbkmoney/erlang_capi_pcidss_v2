@@ -338,18 +338,27 @@ create_googlepay_plain_payment_resource_ok_test(Config) ->
 issue_token(ACL, LifeTime) ->
     PartyID = ?STRING,
     Claims = #{?STRING => ?STRING},
-    capi_authorizer_jwt:issue({{PartyID, capi_acl:from_list(ACL)}, Claims}, LifeTime).
+    capi_auth:issue_access_token(PartyID, Claims, ACL, LifeTime).
 
 start_capi(Config) ->
     CapiEnv = [
         {ip, ?CAPI_IP},
         {port, ?CAPI_PORT},
         {service_type, real},
-        {authorizers, #{
+        {access_conf, #{
             jwt => #{
-                signee => capi_pcidss,
                 keyset => #{
                     capi_pcidss => {pem_file, get_keysource("keys/local/private.pem", Config)}
+                }
+            },
+            access => #{
+                service_name => <<"common-api">>,
+                resource_hierarchy => #{
+                    party               => #{invoice_templates => #{invoice_template_invoices => #{}}},
+                    customers           => #{bindings => #{}},
+                    invoices            => #{payments => #{}},
+                    payment_resources   => #{},
+                    payouts             => #{}
                 }
             }
         }}
