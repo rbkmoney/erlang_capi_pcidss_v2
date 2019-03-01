@@ -127,7 +127,14 @@ issue_token(ACL, LifeTime) ->
 issue_token(PartyID, ACL, LifeTime) ->
     Claims = #{?STRING => ?STRING},
     UniqueId = get_unique_id(),
-    genlib:unwrap(uac_authorizer_jwt:issue(UniqueId, LifeTime, {{PartyID, uac_acl:from_list(ACL)}, Claims}, capi_pcidss)).
+    genlib:unwrap(
+        uac_authorizer_jwt:issue(
+            UniqueId,
+            LifeTime,
+            {{PartyID, uac_acl:from_list(ACL)}, Claims},
+            capi_pcidss
+        )
+    ).
 
 -spec get_unique_id() ->
     binary().

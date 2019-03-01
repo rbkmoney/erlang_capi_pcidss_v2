@@ -26,7 +26,14 @@
 issue_access_token(PartyID, TokenSpec) ->
     {Claims, ACL, Expiration} = resolve_token_spec(TokenSpec),
     UniqueId = get_unique_id(),
-    genlib:unwrap(uac_authorizer_jwt:issue(UniqueId, Expiration, {{PartyID, uac_acl:from_list(ACL)}, Claims}), capi_pcidss).
+    genlib:unwrap(
+        uac_authorizer_jwt:issue(
+            UniqueId,
+            Expiration,
+            {{PartyID, uac_acl:from_list(ACL)}, Claims},
+            capi_pcidss
+        )
+    ).
 
 -type acl() :: [{uac_acl:scope(), uac_acl:permission()}].
 
