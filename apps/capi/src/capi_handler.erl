@@ -31,11 +31,16 @@
 -define(REALM, <<"external">>).
 
 -spec authorize_api_key(swag_server:operation_id(), swag_server:api_key()) ->
-    Result :: false | {true, capi_auth:context()}.
+    Result :: false | {true, uac:context()}.
 
 authorize_api_key(OperationID, ApiKey) ->
     _ = capi_utils:logtag_process(operation_id, OperationID),
-    capi_auth:authorize_api_key(OperationID, ApiKey).
+    case uac:authorize_api_key(ApiKey, get_verification_options()) of
+        {ok, Context} ->
+            {true, Context};
+        {error, _Error} ->
+            false
+    end.
 
 -type request_data()        :: #{atom() | binary() => term()}.
 
@@ -52,6 +57,9 @@ get_handlers() ->
         capi_handler_tokens
     ].
 
+get_verification_options() ->
+    #{}.
+
 -spec handle_request(
     OperationID :: operation_id(),
     Req         :: request_data(),
@@ -62,7 +70,8 @@ get_handlers() ->
 handle_request(OperationID, Req, SwagContext = #{auth_context := AuthContext}) ->
     _ = lager:info("Processing request ~p", [OperationID]),
     try
-        case capi_auth:authorize_operation(OperationID, Req, AuthContext) of
+        OperationACL = capi_auth:get_operation_access(OperationID, Req),
+        case uac:authorize_operation(OperationACL, AuthContext) of
             ok ->
                 WoodyContext = attach_deadline(Req, create_woody_context(Req, AuthContext)),
                 Context = create_processing_context(SwagContext, WoodyContext),

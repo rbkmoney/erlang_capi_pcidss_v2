@@ -107,7 +107,7 @@ groups() ->
     config().
 init_per_suite(Config) ->
     C = capi_ct_helper:init_suite(?MODULE, Config),
-    {ok, Token} = capi_ct_helper:issue_token([{[payment_resources], write}], unlimited),
+    Token = capi_ct_helper:issue_token([{[payment_resources], write}], unlimited),
     [{context, capi_ct_helper:get_context(Token)} | C].
 
 -spec end_per_suite(config()) ->
@@ -388,7 +388,7 @@ authorization_positive_lifetime_ok_test(Config) ->
         {cds_storage, fun ('PutCardData', _) -> {ok, ?PUT_CARD_DATA_RESULT} end},
         {binbase, fun('Lookup', _) -> {ok, ?BINBASE_LOOKUP_RESULT(<<"VISA">>)} end}
     ], Config),
-    {ok, Token} = capi_ct_helper:issue_token([{[payment_resources], write}], {lifetime, 10}),
+    Token = capi_ct_helper:issue_token([{[payment_resources], write}], {lifetime, 10}),
     {ok, _} = capi_client_tokens:create_payment_resource(
         capi_ct_helper:get_context(Token),
         ?TEST_PAYMENT_TOOL_ARGS
@@ -401,7 +401,7 @@ authorization_unlimited_lifetime_ok_test(Config) ->
         {cds_storage, fun ('PutCardData', _) -> {ok, ?PUT_CARD_DATA_RESULT} end},
         {binbase, fun('Lookup', _) -> {ok, ?BINBASE_LOOKUP_RESULT(<<"VISA">>)} end}
     ], Config),
-    {ok, Token} = capi_ct_helper:issue_token([{[payment_resources], write}], unlimited),
+    Token = capi_ct_helper:issue_token([{[payment_resources], write}], unlimited),
     {ok, _} = capi_client_tokens:create_payment_resource(
         capi_ct_helper:get_context(Token),
         ?TEST_PAYMENT_TOOL_ARGS
@@ -414,7 +414,7 @@ authorization_far_future_deadline_ok_test(Config) ->
         {cds_storage, fun ('PutCardData', _) -> {ok, ?PUT_CARD_DATA_RESULT} end},
         {binbase, fun('Lookup', _) -> {ok, ?BINBASE_LOOKUP_RESULT(<<"VISA">>)} end}
     ], Config),
-    {ok, Token} = capi_ct_helper:issue_token([{[payment_resources], write}], {deadline, 4102444800}), % 01/01/2100 @ 12:00am (UTC)
+    Token = capi_ct_helper:issue_token([{[payment_resources], write}], {deadline, 4102444800}), % 01/01/2100 @ 12:00am (UTC)
     {ok, _} = capi_client_tokens:create_payment_resource(
         capi_ct_helper:get_context(Token),
         ?TEST_PAYMENT_TOOL_ARGS
@@ -432,7 +432,7 @@ authorization_error_no_header_test(_Config) ->
 -spec authorization_error_no_permission_test(config()) ->
     _.
 authorization_error_no_permission_test(_Config) ->
-    {ok, Token} = capi_ct_helper:issue_token([{[payment_resources], read}], {lifetime, 10}),
+    Token = capi_ct_helper:issue_token([{[payment_resources], read}], {lifetime, 10}),
     ?badresp(401) = capi_client_tokens:create_payment_resource(
         capi_ct_helper:get_context(Token),
         ?TEST_PAYMENT_TOOL_ARGS
@@ -441,7 +441,7 @@ authorization_error_no_permission_test(_Config) ->
 -spec authorization_bad_token_error_test(config()) ->
     _.
 authorization_bad_token_error_test(Config) ->
-    {ok, Token} = issue_dummy_token([{[payment_resources], write}], Config),
+    Token = issue_dummy_token([{[payment_resources], write}], Config),
     ?badresp(401) = capi_client_tokens:create_payment_resource(
         capi_ct_helper:get_context(Token),
         ?TEST_PAYMENT_TOOL_ARGS
@@ -451,12 +451,12 @@ authorization_bad_token_error_test(Config) ->
 
 issue_dummy_token(ACL, Config) ->
     Claims = #{
-        <<"jti">> => unique_id(),
+        <<"jti">> => capi_ct_helper:get_unique_id(),
         <<"sub">> => <<"TEST">>,
         <<"exp">> => 0,
         <<"resource_access">> => #{
             <<"common-api">> => #{
-                <<"roles">> => capi_acl:encode(capi_acl:from_list(ACL))
+                <<"roles">> => uac_acl:encode(uac_acl:from_list(ACL))
             }
         }
     },
@@ -470,11 +470,7 @@ issue_dummy_token(ACL, Config) ->
     KID = base64url:encode(crypto:hash(sha256, Data)),
     JWT = jose_jwt:sign(BadJWK, #{<<"alg">> => <<"RS256">>, <<"kid">> => KID}, Claims),
     {_Modules, Token} = jose_jws:compact(JWT),
-    {ok, Token}.
+    Token.
 
 get_keysource(Key, Config) ->
     filename:join(?config(data_dir, Config), Key).
-
-unique_id() ->
-    <<ID:64>> = snowflake:new(),
-    genlib_format:format_int_base(ID, 62).

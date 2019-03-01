@@ -17,6 +17,7 @@
 -export([mock_services/2]).
 -export([mock_services_/2]).
 -export([get_lifetime/0]).
+-export([get_unique_id/0]).
 
 -define(CAPI_IP                     , "::").
 -define(CAPI_PORT                   , 8080).
@@ -82,12 +83,20 @@ start_capi(Config) ->
         {ip, ?CAPI_IP},
         {port, ?CAPI_PORT},
         {service_type, real},
-        {authorizers, #{
+        {access_conf, #{
             jwt => #{
-                signee => capi_pcidss,
                 keyset => #{
-                    % TODO use crypto:generate_key here when move on 21 Erlang
                     capi_pcidss => {pem_file, get_keysource("keys/local/private.pem", Config)}
+                }
+            },
+            access => #{
+                service_name => <<"common-api">>,
+                resource_hierarchy => #{
+                    party               => #{invoice_templates => #{invoice_template_invoices => #{}}},
+                    customers           => #{bindings => #{}},
+                    invoices            => #{payments => #{}},
+                    payment_resources   => #{},
+                    payouts             => #{}
                 }
             }
         }}
@@ -117,7 +126,15 @@ issue_token(ACL, LifeTime) ->
 
 issue_token(PartyID, ACL, LifeTime) ->
     Claims = #{?STRING => ?STRING},
-    capi_authorizer_jwt:issue({{PartyID, capi_acl:from_list(ACL)}, Claims}, LifeTime).
+    UniqueId = get_unique_id(),
+    genlib:unwrap(uac_authorizer_jwt:issue(UniqueId, LifeTime, {{PartyID, uac_acl:from_list(ACL)}, Claims}, capi_pcidss)).
+
+-spec get_unique_id() ->
+    binary().
+
+get_unique_id() ->
+    <<ID:64>> = snowflake:new(),
+    genlib_format:format_int_base(ID, 62).
 
 -spec get_context(binary()) ->
     capi_client_lib:context().
