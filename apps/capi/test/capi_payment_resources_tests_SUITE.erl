@@ -32,6 +32,9 @@
     create_googlepay_tokenized_payment_resource_ok_test/1,
     create_googlepay_plain_payment_resource_ok_test/1,
 
+    ip_replacement_not_allowed_test/1,
+    ip_replacement_allowed_test/1,
+
     authorization_positive_lifetime_ok_test/1,
     authorization_unlimited_lifetime_ok_test/1,
     authorization_far_future_deadline_ok_test/1,
@@ -72,7 +75,8 @@ init([]) ->
     [test_case_name()].
 all() ->
     [
-        {group, payment_resources}
+        {group, payment_resources},
+        {group, ip_replacement_allowed}
     ].
 
 -spec groups() ->
@@ -89,6 +93,7 @@ groups() ->
                 create_applepay_tokenized_payment_resource_ok_test,
                 create_googlepay_tokenized_payment_resource_ok_test,
                 create_googlepay_plain_payment_resource_ok_test,
+                ip_replacement_not_allowed_test,
 
                 authorization_positive_lifetime_ok_test,
                 authorization_unlimited_lifetime_ok_test,
@@ -96,6 +101,11 @@ groups() ->
                 authorization_error_no_header_test,
                 authorization_error_no_permission_test,
                 authorization_bad_token_error_test
+            ]
+        },
+        {ip_replacement_allowed, [],
+            [
+                ip_replacement_allowed_test
             ]
         }
     ].
@@ -106,9 +116,7 @@ groups() ->
 -spec init_per_suite(config()) ->
     config().
 init_per_suite(Config) ->
-    C = capi_ct_helper:init_suite(?MODULE, Config),
-    Token = capi_ct_helper:issue_token([{[payment_resources], write}], unlimited),
-    [{context, capi_ct_helper:get_context(Token)} | C].
+    capi_ct_helper:init_suite(?MODULE, Config).
 
 -spec end_per_suite(config()) ->
     _.
@@ -120,12 +128,19 @@ end_per_suite(C) ->
 -spec init_per_group(group_name(), config()) ->
     config().
 
-init_per_group(_, Config) ->
-    Config.
+init_per_group(payment_resources, Config) ->
+    Token = capi_ct_helper:issue_token([{[payment_resources], write}], unlimited),
+    [{context, capi_ct_helper:get_context(Token)} | Config];
+
+init_per_group(ip_replacement_allowed, Config) ->
+    ExtraProperties = #{<<"ip_replacement_allowed">> => <<"true">>},
+    Token = capi_ct_helper:issue_token(?STRING, [{[payment_resources], write}], unlimited, ExtraProperties),
+    [{context, capi_ct_helper:get_context(Token)} | Config].
 
 -spec end_per_group(group_name(), config()) ->
     _.
-end_per_group(_Group, _C) ->
+end_per_group(_Group, C) ->
+    proplists:delete(context, C),
     ok.
 
 -spec init_per_testcase(test_case_name(), config()) ->
@@ -378,6 +393,46 @@ create_googlepay_plain_payment_resource_ok_test(Config) ->
             <<"clientInfo">> => ClientInfo
         }),
     false = maps:is_key(<<"tokenProvider">>, Details).
+
+%%
+
+-spec ip_replacement_not_allowed_test(_) ->
+    _.
+
+ip_replacement_not_allowed_test(Config) ->
+    % In this case we have no ip_replacement_allowed field, perhaps we could also test token with this field set to false
+    ClientIP = <<"::ffff:42.42.42.42">>,
+    ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>, <<"ip">> => ClientIP},
+    {ok, Res} = capi_client_tokens:create_payment_resource(?config(context, Config), #{
+        <<"paymentTool">> => #{
+            <<"paymentToolType">> => <<"DigitalWalletData">>,
+            <<"digitalWalletType">> => <<"DigitalWalletQIWI">>,
+            <<"phoneNumber">> => <<"+79876543210">>
+        },
+        <<"clientInfo">> => ClientInfo
+    }),
+    case maps:get(<<"ip">>, maps:get(<<"clientInfo">>, Res)) of
+        ClientIP ->
+            error("unathorized ip replacement");
+        _ ->
+            ok
+    end.
+
+-spec ip_replacement_allowed_test(_) ->
+    _.
+
+ip_replacement_allowed_test(Config) ->
+    ClientIP = <<"::ffff:42.42.42.42">>,
+    ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>, <<"ip">> => ClientIP},
+    {ok, Res} = capi_client_tokens:create_payment_resource(?config(context, Config), #{
+        <<"paymentTool">> => #{
+            <<"paymentToolType">> => <<"DigitalWalletData">>,
+            <<"digitalWalletType">> => <<"DigitalWalletQIWI">>,
+            <<"phoneNumber">> => <<"+79876543210">>
+        },
+        <<"clientInfo">> => ClientInfo
+    }),
+   ClientIP = maps:get(<<"ip">>, maps:get(<<"clientInfo">>, Res)).
 
 %%
 

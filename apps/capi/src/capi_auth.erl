@@ -1,6 +1,8 @@
 -module(capi_auth).
 
 -export([issue_access_token/2]).
+-export([issue_access_token/3]).
+
 -export([get_subject_id/1]).
 -export([get_claims/1]).
 -export([get_claim/2]).
@@ -24,8 +26,14 @@
 -spec issue_access_token(PartyID :: binary(), token_spec()) ->
     uac_authorizer_jwt:token().
 issue_access_token(PartyID, TokenSpec) ->
-    {Claims, ACL, Expiration} = resolve_token_spec(TokenSpec),
+    issue_access_token(PartyID, TokenSpec, #{}).
+
+-spec issue_access_token(PartyID :: binary(), token_spec(), ExtraProps :: map()) ->
+    uac_authorizer_jwt:token().
+issue_access_token(PartyID, TokenSpec, ExtraProperties) ->
+    {Claims0, ACL, Expiration} = resolve_token_spec(TokenSpec),
     UniqueId = get_unique_id(),
+    Claims = maps:merge(ExtraProperties, Claims0),
     genlib:unwrap(
         uac_authorizer_jwt:issue(
             UniqueId,
@@ -36,7 +44,7 @@ issue_access_token(PartyID, TokenSpec) ->
         )
     ).
 
--type acl() :: [{uac_acl:scope(), uac_acl:permission()}].
+-type acl() :: [{capi_acl:scope(), capi_acl:permission()}].
 
 -spec resolve_token_spec(token_spec()) ->
     {uac:claims(), acl(), uac_authorizer_jwt:expiration()}.

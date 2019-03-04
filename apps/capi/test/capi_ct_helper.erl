@@ -10,7 +10,9 @@
 -export([start_capi/1]).
 -export([issue_token/2]).
 -export([issue_token/3]).
+-export([issue_token/4]).
 -export([get_context/1]).
+-export([get_context/2]).
 -export([get_keysource/2]).
 -export([start_mocked_service_sup/1]).
 -export([stop_mocked_service_sup/1]).
@@ -109,14 +111,14 @@ start_capi(Config) ->
 get_keysource(Key, Config) ->
     filename:join(?config(data_dir, Config), Key).
 
--spec issue_token(_, _) ->
-    {ok, binary()} |
-    {error,
-        nonexistent_signee
-    }.
+-spec issue_token( _, _) ->
+        {ok, binary()} |
+        {error,
+            nonexistent_signee
+        }.
 
 issue_token(ACL, LifeTime) ->
-    issue_token(?STRING, ACL, LifeTime).
+    issue_token(?STRING, ACL, LifeTime, #{}).
 
 -spec issue_token(_, _, _) ->
     {ok, binary()} |
@@ -125,7 +127,16 @@ issue_token(ACL, LifeTime) ->
     }.
 
 issue_token(PartyID, ACL, LifeTime) ->
-    Claims = #{?STRING => ?STRING},
+    issue_token(PartyID, ACL, LifeTime, #{}).
+
+-spec issue_token(_, _, _, _) ->
+    {ok, binary()} |
+    {error,
+        nonexistent_signee
+    }.
+
+issue_token(PartyID, ACL, LifeTime, ExtraProperties) ->
+    Claims = maps:merge(#{?STRING => ?STRING}, ExtraProperties),
     UniqueId = get_unique_id(),
     genlib:unwrap(
         uac_authorizer_jwt:issue(
@@ -148,7 +159,13 @@ get_unique_id() ->
     capi_client_lib:context().
 
 get_context(Token) ->
-    capi_client_lib:get_context(?CAPI_URL, Token, 10000, ipv4).
+    get_context(Token, #{}).
+
+-spec get_context(binary(), map()) ->
+    capi_client_lib:context().
+
+get_context(Token, ExtraProperties) ->
+    capi_client_lib:get_context(?CAPI_URL, Token, 10000, ipv4, ExtraProperties).
 
 % TODO move it to `capi_dummy_service`, looks more appropriate
 

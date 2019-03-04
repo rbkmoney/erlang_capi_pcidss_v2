@@ -10,8 +10,10 @@
 -export([service_call/2]).
 
 -export([get_auth_context/1]).
+-export([get_extra_properties/1]).
 
 -export([issue_access_token/2]).
+-export([issue_access_token/3]).
 -export([merge_and_compact/2]).
 
 -export([wrap_payment_session/2]).
@@ -100,13 +102,25 @@ get_user_info(Context) ->
 get_party_id(Context) ->
     capi_auth:get_subject_id(get_auth_context(Context)).
 
+-spec get_extra_properties(processing_context()) ->
+    map().
+
+get_extra_properties(Context) ->
+    capi_auth:get_claims(get_auth_context(Context)).
+
 %% Utils
 
 -spec issue_access_token(binary(), tuple()) ->
     map().
 
 issue_access_token(PartyID, TokenSpec) ->
-    #{<<"payload">> => capi_auth:issue_access_token(PartyID, TokenSpec)}.
+    issue_access_token(PartyID, TokenSpec, #{}).
+
+-spec issue_access_token(binary(), tuple(), map()) ->
+    map().
+
+issue_access_token(PartyID, TokenSpec, ExtraProperties) ->
+    #{<<"payload">> => capi_auth:issue_access_token(PartyID, TokenSpec, ExtraProperties)}.
 
 -spec merge_and_compact(map(), map()) ->
     map().
