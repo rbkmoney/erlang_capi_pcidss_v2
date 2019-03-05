@@ -31,7 +31,6 @@
     create_applepay_tokenized_payment_resource_ok_test/1,
     create_googlepay_tokenized_payment_resource_ok_test/1,
     create_googlepay_plain_payment_resource_ok_test/1,
-
     ip_replacement_not_allowed_test/1,
     ip_replacement_allowed_test/1,
 
