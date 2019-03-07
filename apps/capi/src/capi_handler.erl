@@ -84,7 +84,7 @@ handle_request(OperationID, Req, SwagContext = #{auth_context := AuthContext}) -
         error:{woody_error, {Source, Class, Details}} ->
             process_woody_error(Source, Class, Details);
         throw:{bad_deadline, Deadline} ->
-            _ = lager:warning("Operation ~p failed due to invalid deadline ~p", [OperationID, Deadline]),
+            _ = lager:info("Operation ~p failed due to invalid deadline ~p", [OperationID, Deadline]),
             {ok, logic_error(invalidDeadline, <<"Invalid data in X-Request-Deadline header">>)}
     end.
 

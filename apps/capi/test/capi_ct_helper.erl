@@ -37,15 +37,7 @@ init_suite(Module, Config) ->
     Apps1 =
         start_app(lager) ++
         start_app(woody),
-    ServiceURLs = mock_services_([
-        {
-            'Repository',
-            {dmsl_domain_config_thrift, 'Repository'},
-            fun('Checkout', _) -> {ok, ?SNAPSHOT} end
-        }
-    ], SupPid),
     Apps2 =
-        start_app(dmt_client, [{max_cache_size, #{}}, {service_urls, ServiceURLs}, {cache_update_interval, 50000}]) ++
         start_capi(Config),
     [{apps, lists:reverse(Apps2 ++ Apps1)}, {suite_test_sup, SupPid} | Config].
 
