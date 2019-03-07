@@ -36,7 +36,8 @@ init_suite(Module, Config) ->
     SupPid = start_mocked_service_sup(Module),
     Apps1 =
         start_app(lager) ++
-        start_app(woody),
+        start_app(woody) ++
+        start_app(scoper),
     Apps2 =
         start_capi(Config),
     [{apps, lists:reverse(Apps2 ++ Apps1)}, {suite_test_sup, SupPid} | Config].
@@ -200,7 +201,7 @@ mock_services_(Services, SupPid) when is_pid(SupPid) ->
         #{
             ip => IP,
             port => Port,
-            event_handler => capi_woody_event_handler,
+            event_handler => scoper_woody_event_handler,
             handlers => lists:map(fun mock_service_handler/1, Services)
         }
     ),
