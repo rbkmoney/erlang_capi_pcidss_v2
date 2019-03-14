@@ -70,10 +70,10 @@ get_verification_options() ->
 handle_request(OperationID, Req, SwagContext = #{auth_context := AuthContext}) ->
     _ = lager:info("Processing request ~p", [OperationID]),
     try
+        WoodyContext = attach_deadline(Req, create_woody_context(Req, AuthContext)),
         OperationACL = capi_auth:get_operation_access(OperationID, Req),
         case uac:authorize_operation(OperationACL, AuthContext) of
             ok ->
-                WoodyContext = attach_deadline(Req, create_woody_context(Req, AuthContext)),
                 Context = create_processing_context(SwagContext, WoodyContext),
                 process_request(OperationID, Req, Context, get_handlers());
             {error, _} = Error ->
@@ -83,8 +83,7 @@ handle_request(OperationID, Req, SwagContext = #{auth_context := AuthContext}) -
     catch
         error:{woody_error, {Source, Class, Details}} ->
             process_woody_error(Source, Class, Details);
-        throw:{bad_deadline, Deadline} ->
-            _ = lager:info("Operation ~p failed due to invalid deadline ~p", [OperationID, Deadline]),
+        throw:{bad_deadline, _Deadline} ->
             {ok, logic_error(invalidDeadline, <<"Invalid data in X-Request-Deadline header">>)}
     end.
 
@@ -97,6 +96,7 @@ handle_request(OperationID, Req, SwagContext = #{auth_context := AuthContext}) -
     {ok | error,   response()}.
 
 process_request(OperationID, _Req, _Context, []) ->
+    _ = lager:info("Operation ~p failed due to missing handler", [OperationID]),
     erlang:throw({handler_function_clause, OperationID});
 process_request(OperationID, Req, Context, [Handler | Rest]) ->
     case Handler:process_request(OperationID, Req, Context) of
@@ -115,8 +115,7 @@ create_processing_context(SwaggerContext, WoodyContext) ->
     }.
 
 create_woody_context(#{'X-Request-ID' := RequestID}, AuthContext) ->
-    RpcID = #{trace_id := TraceID} = woody_context:new_rpc_id(genlib:to_binary(RequestID)),
-    _ = lager:debug("Created TraceID:~p for RequestID:~p", [TraceID , RequestID]),
+    RpcID = woody_context:new_rpc_id(genlib:to_binary(RequestID)),
     woody_user_identity:put(collect_user_identity(AuthContext), woody_context:new(RpcID)).
 
 collect_user_identity(AuthContext) ->
