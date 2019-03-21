@@ -34,13 +34,14 @@
     Result :: false | {true, uac:context()}.
 
 authorize_api_key(OperationID, ApiKey) ->
-    _ = capi_utils:logtag_process(operation_id, OperationID),
-    case uac:authorize_api_key(ApiKey, get_verification_options()) of
-        {ok, Context} ->
-            {true, Context};
-        {error, _Error} ->
-            false
-    end.
+    scoper:scope(capi_handler, #{operation_id => OperationID}, fun() ->
+        case uac:authorize_api_key(ApiKey, get_verification_options()) of
+            {ok, Context} ->
+                {true, Context};
+            {error, _Error} ->
+                false
+        end
+    end).
 
 -type request_data()        :: #{atom() | binary() => term()}.
 
@@ -70,6 +71,7 @@ get_verification_options() ->
 handle_request(OperationID, Req, SwagContext = #{auth_context := AuthContext}) ->
     _ = lager:info("Processing request ~p", [OperationID]),
     try
+        ok = scoper:add_scope(capi_handler, #{operation_id => OperationID}),
         WoodyContext = attach_deadline(Req, create_woody_context(Req, AuthContext)),
         OperationACL = capi_auth:get_operation_access(OperationID, Req),
         case uac:authorize_operation(OperationACL, AuthContext) of
@@ -84,7 +86,11 @@ handle_request(OperationID, Req, SwagContext = #{auth_context := AuthContext}) -
         error:{woody_error, {Source, Class, Details}} ->
             process_woody_error(Source, Class, Details);
         throw:{bad_deadline, _Deadline} ->
-            {ok, logic_error(invalidDeadline, <<"Invalid data in X-Request-Deadline header">>)}
+            {ok, logic_error(invalidDeadline, <<"Invalid data in X-Request-Deadline header">>)};
+        throw:{handler_function_clause, _OperationID} ->
+            {ok, {501, [], <<"Error processing requested operation">>}}
+    after
+        ok = scoper:remove_scope(capi_handler)
     end.
 
 -spec process_request(
@@ -115,7 +121,8 @@ create_processing_context(SwaggerContext, WoodyContext) ->
     }.
 
 create_woody_context(#{'X-Request-ID' := RequestID}, AuthContext) ->
-    RpcID = woody_context:new_rpc_id(genlib:to_binary(RequestID)),
+    RpcID = #{trace_id := TraceID} = woody_context:new_rpc_id(genlib:to_binary(RequestID)),
+    ok = scoper:add_meta(#{request_id => RequestID, trace_id => TraceID}),
     woody_user_identity:put(collect_user_identity(AuthContext), woody_context:new(RpcID)).
 
 collect_user_identity(AuthContext) ->
