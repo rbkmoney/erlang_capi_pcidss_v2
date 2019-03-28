@@ -30,15 +30,20 @@
 %% @WARNING Must be refactored in case of different classes of users using this API
 -define(REALM, <<"external">>).
 
+-define(SWAG_HANDLER_SCOPE, swag_handler).
+
 -spec authorize_api_key(swag_server:operation_id(), swag_server:api_key()) ->
     Result :: false | {true, uac:context()}.
 
 authorize_api_key(OperationID, ApiKey) ->
-    scoper:scope(capi_handler, #{operation_id => OperationID}, fun() ->
+    scoper:scope(?SWAG_HANDLER_SCOPE, #{operation_id => OperationID, api_key => ApiKey}, fun() ->
+        _ = lager:debug("Api key authorization started"),
         case uac:authorize_api_key(ApiKey, get_verification_options()) of
             {ok, Context} ->
+                _ = lager:debug("Api key authorization successful"),
                 {true, Context};
-            {error, _Error} ->
+            {error, Error} ->
+                _ = lager:info("Api key authorization failed due to ~p", [Error]),
                 false
         end
     end).
@@ -71,7 +76,7 @@ get_verification_options() ->
 handle_request(OperationID, Req, SwagContext = #{auth_context := AuthContext}) ->
     _ = lager:info("Processing request ~p", [OperationID]),
     try
-        ok = scoper:add_scope(capi_handler, #{operation_id => OperationID}),
+        ok = scoper:add_scope(?SWAG_HANDLER_SCOPE, #{operation_id => OperationID}),
         WoodyContext = attach_deadline(Req, create_woody_context(Req, AuthContext)),
         OperationACL = capi_auth:get_operation_access(OperationID, Req),
         case uac:authorize_operation(OperationACL, AuthContext) of
@@ -88,9 +93,9 @@ handle_request(OperationID, Req, SwagContext = #{auth_context := AuthContext}) -
         throw:{bad_deadline, _Deadline} ->
             {ok, logic_error(invalidDeadline, <<"Invalid data in X-Request-Deadline header">>)};
         throw:{handler_function_clause, _OperationID} ->
-            {ok, {501, [], <<"Error processing requested operation">>}}
+            {ok, {501, [], undefined}}
     after
-        ok = scoper:remove_scope(capi_handler)
+        ok = scoper:remove_scope(?SWAG_HANDLER_SCOPE)
     end.
 
 -spec process_request(
@@ -102,7 +107,7 @@ handle_request(OperationID, Req, SwagContext = #{auth_context := AuthContext}) -
     {ok | error,   response()}.
 
 process_request(OperationID, _Req, _Context, []) ->
-    _ = lager:info("Operation ~p failed due to missing handler", [OperationID]),
+    _ = lager:error("Operation ~p failed due to missing handler", [OperationID]),
     erlang:throw({handler_function_clause, OperationID});
 process_request(OperationID, Req, Context, [Handler | Rest]) ->
     case Handler:process_request(OperationID, Req, Context) of
