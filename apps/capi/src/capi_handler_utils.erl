@@ -11,6 +11,8 @@
 -export([get_auth_context/1]).
 -export([get_extra_properties/1]).
 
+-export([get_party_id/1]).
+
 -export([merge_and_compact/2]).
 
 -export([wrap_payment_session/2]).
@@ -18,9 +20,23 @@
 -type processing_context() :: capi_handler:processing_context().
 -type response()           :: capi_handler:response().
 
--spec logic_error(term(), io_lib:chars() | binary()) ->
-    response().
+-spec logic_error
+    (term(), io_lib:chars() | binary()) -> response();
+    (term(), {binary(), binary() | undefined}) -> response().
 
+logic_error(externalIDConflict, {ID, undefined}) ->
+    logic_error(externalIDConflict, {ID, <<"undefined">>});
+logic_error(externalIDConflict, {ID, ExternalID}) ->
+    Data = #{
+        <<"externalID">> => ExternalID,
+        <<"id">> => ID,
+        <<"message">> => <<"This 'externalID' has been used by another request">>},
+    create_erorr_resp(409, Data);
+logic_error(externalIDConflict, ExternalID) ->
+    Data = #{
+        <<"externalID">> => ExternalID,
+        <<"message">> => <<"This 'externalID' has been used by another request">>},
+    create_erorr_resp(409, Data);
 logic_error(Code, Message) ->
     Data = #{<<"code">> => genlib:to_binary(Code), <<"message">> => genlib:to_binary(Message)},
     create_erorr_resp(400, Data).
@@ -35,6 +51,12 @@ create_erorr_resp(Code, Headers, Data) ->
 
 server_error(Code) when Code >= 500 andalso Code < 600 ->
     {Code, [], <<>>}.
+
+-spec get_party_id(processing_context()) ->
+    binary().
+
+get_party_id(Context) ->
+    capi_auth:get_subject_id(get_auth_context(Context)).
 
 %%%
 

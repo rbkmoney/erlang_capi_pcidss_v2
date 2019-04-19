@@ -20,6 +20,10 @@
     version = ?INTEGER
 }).
 
+-define(PUT_CARD_RESULT, #'PutCardResult'{
+    bank_card = ?BANK_CARD
+}).
+
 -define(UNWRAPPED_PAYMENT_TOOL(Details),
     ?UNWRAPPED_PAYMENT_TOOL(
         Details,
@@ -48,7 +52,7 @@
     details = Details
 }).
 
--define(PUT_CARD_DATA_RESULT, #'PutCardDataResult'{
+-define(PUT_CARD_DATA_RESULT, #'PutCardResult'{
     bank_card = ?BANK_CARD,
     session_id = ?STRING
 }).
