@@ -92,11 +92,7 @@ start_capi(Config) ->
             access => #{
                 service_name => <<"common-api">>,
                 resource_hierarchy => #{
-                    party               => #{invoice_templates => #{invoice_template_invoices => #{}}},
-                    customers           => #{bindings => #{}},
-                    invoices            => #{payments => #{}},
-                    payment_resources   => #{},
-                    payouts             => #{}
+                    payment_resources   => #{}
                 }
             }
         }}

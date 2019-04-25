@@ -24,9 +24,9 @@ start_link() ->
 init([]) ->
     {LogicHandler, LogicHandlerSpecs} = get_logic_handler_info(),
     HealthRoutes = [{'_', [erl_health_handle:get_route(genlib_app:env(capi_pcidss, health_checkers, []))]}],
-    SwaggerSpec = capi_swagger_server:child_spec({HealthRoutes, LogicHandler}),
-    UacConf = genlib_app:env(capi_pcidss, access_conf),
-    uac:configure(UacConf),
+    SwaggerSpec  = capi_swagger_server:child_spec({HealthRoutes, LogicHandler}),
+    UacConf      = genlib_app:env(capi_pcidss, access_conf),
+    ok           = uac:configure(UacConf),
     {ok, {
         {one_for_all, 0, 1},
             LogicHandlerSpecs ++ [SwaggerSpec]

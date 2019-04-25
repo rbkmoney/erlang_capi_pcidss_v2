@@ -101,7 +101,7 @@
   1},
  {<<"uac">>,
   {git,"git@github.com:rbkmoney/erlang_uac.git",
-       {ref,"a166b66a81fe7373bb31025169fa3fb8140c4047"}},
+       {ref,"14c5f242eb39bdeccfd015dbd4ebbbcd82deab90"}},
   0},
  {<<"woody">>,
   {git,"git@github.com:rbkmoney/woody_erlang.git",
