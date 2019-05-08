@@ -1,7 +1,13 @@
 -module(capi_ct_helper).
 
+-include_lib("capi_dummy_data.hrl").
+
 -export([start_app/1]).
 -export([start_app/2]).
+
+-export([issue_token/2]).
+-export([issue_token/3]).
+-export([issue_token/4]).
 
 %%
 
@@ -17,13 +23,18 @@ start_app(lager = AppName) ->
         {error_logger_hwm, 600},
         {suppress_application_start_stop, true},
         {handlers, [
-            {lager_common_test_backend, [warning, {lager_logstash_formatter, []}]}
+            {lager_common_test_backend, [debug, {lager_logstash_formatter, []}]}
         ]}
     ]);
 
 start_app(woody = AppName) ->
     start_app(AppName, [
         {acceptors_pool_size, 4}
+    ]);
+
+start_app(scoper = AppName) ->
+    start_app(AppName, [
+        {storage, scoper_storage_lager}
     ]);
 
 start_app(AppName) ->
@@ -34,3 +45,47 @@ start_app(AppName) ->
 
 start_app(AppName, Env) ->
     genlib_app:start_application_with(AppName, Env).
+
+-spec issue_token( _, _) ->
+        {ok, binary()} |
+        {error,
+            nonexistent_signee
+        }.
+
+issue_token(ACL, LifeTime) ->
+    issue_token(?STRING, ACL, LifeTime, #{}).
+
+-spec issue_token(_, _, _) ->
+    {ok, binary()} |
+    {error,
+        nonexistent_signee
+    }.
+
+issue_token(PartyID, ACL, LifeTime) ->
+    issue_token(PartyID, ACL, LifeTime, #{}).
+
+-spec issue_token(_, _, _, _) ->
+    {ok, binary()} |
+    {error,
+        nonexistent_signee
+    }.
+
+issue_token(PartyID, ACL, LifeTime, ExtraProperties) ->
+    Claims = maps:merge(#{?STRING => ?STRING}, ExtraProperties),
+    UniqueId = get_unique_id(),
+    genlib:unwrap(
+        uac_authorizer_jwt:issue(
+            UniqueId,
+            LifeTime,
+            {PartyID, uac_acl:from_list(ACL)},
+            Claims,
+            capi_pcidss
+        )
+    ).
+
+-spec get_unique_id() ->
+    binary().
+
+get_unique_id() ->
+    <<ID:64>> = snowflake:new(),
+    genlib_format:format_int_base(ID, 62).

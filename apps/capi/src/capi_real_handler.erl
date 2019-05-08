@@ -21,6 +21,8 @@
 %% @WARNING Must be refactored in case of different classes of users using this API
 -define(REALM, <<"external">>).
 
+-define(SWAG_HANDLER_SCOPE, swag_handler).
+
 -define(DEFAULT_INVOICE_META, #{}).
 -define(DEFAULT_INVOICE_TPL_META, #{}).
 -define(DEFAULT_URL_LIFETIME, 60). % seconds
@@ -34,14 +36,17 @@
     Result :: false | {true, capi_auth:context()}.
 
 authorize_api_key(OperationID, ApiKey) ->
-    _ = capi_utils:logtag_process(operation_id, OperationID),
-    VerificationOpts = get_verification_opts(),
-    case uac:authorize_api_key(ApiKey, VerificationOpts) of
-        {ok, Context} ->
-            {true, Context};
-        {error, _Error} ->
-            false
-    end.
+    scoper:scope(?SWAG_HANDLER_SCOPE, #{operation_id => OperationID, api_key => ApiKey}, fun() ->
+        _ = lager:debug("Api key authorization started"),
+        case uac:authorize_api_key(ApiKey, get_verification_opts()) of
+            {ok, Context} ->
+                _ = lager:debug("Api key authorization successful"),
+                {true, Context};
+            {error, Error} ->
+                _ = lager:info("Api key authorization failed due to ~p", [Error]),
+                false
+        end
+    end).
 
 get_verification_opts() ->
     #{}.
@@ -58,6 +63,7 @@ get_verification_opts() ->
 handle_request(OperationID, Req, Context) ->
     _ = lager:info("Processing request ~p", [OperationID]),
     try
+        ok = scoper:add_scope(?SWAG_HANDLER_SCOPE, #{operation_id => OperationID}),
         OperationACL = capi_auth:get_operation_access(OperationID, Req),
         case uac:authorize_operation(OperationACL, get_auth_context(Context)) of
             ok ->
@@ -70,6 +76,8 @@ handle_request(OperationID, Req, Context) ->
     catch
         error:{woody_error, {Source, Class, Details}} ->
             process_woody_error(Source, Class, Details)
+    after
+        ok = scoper:remove_scope(?SWAG_HANDLER_SCOPE)
     end.
 
 -spec process_request(
@@ -112,9 +120,8 @@ service_call(ServiceName, Function, Args, Context) ->
 
 create_context(#{'X-Request-ID' := RequestID}, AuthContext) ->
     RpcID = #{trace_id := TraceID} = woody_context:new_rpc_id(genlib:to_binary(RequestID)),
-    _ = lager:debug("Created TraceID:~p for RequestID:~p", [TraceID , RequestID]),
-    WoodyContext = woody_context:new(RpcID),
-    woody_user_identity:put(collect_user_identity(AuthContext), WoodyContext).
+    ok = scoper:add_meta(#{request_id => RequestID, trace_id => TraceID}),
+    woody_user_identity:put(collect_user_identity(AuthContext), woody_context:new(RpcID)).
 
 collect_user_identity(AuthContext) ->
     genlib_map:compact(#{

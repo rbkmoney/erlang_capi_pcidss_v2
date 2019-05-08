@@ -2,21 +2,16 @@
     {description, "A service that does something securely"},
     {vsn, "0.1.0"},
     {registered, []},
-    {mod, { capi_pcidss , []}},
+    {mod, {capi_pcidss, []}},
     {applications, [
         kernel,
         stdlib,
-        public_key,
         lager,
-        lager_logstash_formatter,
         genlib,
-        woody,
         capi_woody_client,
         dmsl,
         binbase_proto,
-        dmt_client,
         swag_server,
-        jose,
         cowboy_cors,
         cowboy_access_log,
         rfc3339,
@@ -24,15 +19,9 @@
         snowflake,
         woody_user_identity,
         payproc_errors,
-        how_are_you,
         erl_health,
-        uac
+        uac,
+        scoper
     ]},
-    {env, []},
-    {modules, []},
-    {maintainers, [
-        "Artem Ocheredko <galaxie.stern@gmail.com>"
-    ]},
-    {licenses, []},
-    {links, []}
+    {env, []}
 ]}.

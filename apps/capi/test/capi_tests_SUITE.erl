@@ -84,20 +84,12 @@ groups() ->
     config().
 init_per_suite(Config) ->
     SupPid = start_mocked_service_sup(),
-    Apps1 =
-        capi_ct_helper:start_app(lager) ++
-        capi_ct_helper:start_app(woody),
-    ServiceURLs = mock_services_([
-        {
-            'Repository',
-            {dmsl_domain_config_thrift, 'Repository'},
-            fun('Checkout', _) -> {ok, ?SNAPSHOT} end
-        }
-    ], SupPid),
-    Apps2 =
-        capi_ct_helper:start_app(dmt_client, [{max_cache_size, #{}}, {service_urls, ServiceURLs}]) ++
+    Apps =
+        capi_ct_helper:start_app(lager)  ++
+        capi_ct_helper:start_app(woody)  ++
+        capi_ct_helper:start_app(scoper) ++
         start_capi(Config),
-    [{apps, lists:reverse(Apps2 ++ Apps1)}, {suite_test_sup, SupPid} | Config].
+    [{apps, lists:reverse(Apps)}, {suite_test_sup, SupPid} | Config].
 
 -spec end_per_suite(config()) ->
     _.
@@ -112,7 +104,7 @@ init_per_group(payment_resources, Config) ->
     BasePermissions = [
         {[payment_resources], write}
     ],
-    {ok, Token} = issue_token(BasePermissions, unlimited),
+    Token = capi_ct_helper:issue_token(BasePermissions, unlimited),
     Context = get_context(Token),
     [{context, Context} | Config];
 
@@ -335,11 +327,6 @@ create_googlepay_plain_payment_resource_ok_test(Config) ->
 
 %%
 
-issue_token(ACL, LifeTime) ->
-    PartyID = ?STRING,
-    Claims = #{?STRING => ?STRING},
-    capi_auth:issue_access_token(PartyID, Claims, ACL, LifeTime).
-
 start_capi(Config) ->
     CapiEnv = [
         {ip, ?CAPI_IP},
@@ -354,11 +341,7 @@ start_capi(Config) ->
             access => #{
                 service_name => <<"common-api">>,
                 resource_hierarchy => #{
-                    party               => #{invoice_templates => #{invoice_template_invoices => #{}}},
-                    customers           => #{bindings => #{}},
-                    invoices            => #{payments => #{}},
-                    payment_resources   => #{},
-                    payouts             => #{}
+                    payment_resources   => #{}
                 }
             }
         }}
@@ -390,7 +373,7 @@ mock_services_(Services, SupPid) when is_pid(SupPid) ->
         #{
             ip => IP,
             port => Port,
-            event_handler => capi_woody_event_handler,
+            event_handler => scoper_woody_event_handler,
             handlers => lists:map(fun mock_service_handler/1, Services)
         }
     ),

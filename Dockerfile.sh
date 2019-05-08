@@ -1,7 +1,7 @@
 #!/bin/bash
 cat <<EOF
 FROM $BASE_IMAGE
-MAINTAINER Artem Ocheredko <a.ocheredko@rbkmoney.com>
+MAINTAINER Alexey Shaporin <a.shaporin@rbk.money>
 COPY ./_build/prod/rel/capi_pcidss /opt/capi_pcidss
 WORKDIR /opt/capi_pcidss
 CMD /opt/capi_pcidss/bin/capi_pcidss foreground

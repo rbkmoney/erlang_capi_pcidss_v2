@@ -53,18 +53,15 @@ make_search_query_string(ParamList) ->
 
 -spec prepare_param({atom(), term()}) ->
     map().
-prepare_param(Param) ->
-    case Param of
-        {limit, P}          -> #{<<"limit">> => genlib:to_binary(P)};
-        {offset, P}         -> #{<<"offset">> => genlib:to_binary(P)};
-        {from_time, P}      -> #{<<"fromTime">> => genlib_format:format_datetime_iso8601(P)};
-        {to_time, P}        -> #{<<"toTime">> => genlib_format:format_datetime_iso8601(P)};
-        {status, P}         -> #{<<"status">> => genlib:to_binary(P)};
-        {split_unit, P}     -> #{<<"splitUnit">> => genlib:to_binary(P)};
-        {split_size, P}     -> #{<<"splitSize">> => genlib:to_binary(P)};
-        {payment_method, P} -> #{<<"paymentMethod">> => genlib:to_binary(P)};
-        {ParamName, P}      -> #{genlib:to_binary(ParamName) => P}
-    end.
+prepare_param({limit, P})          -> #{<<"limit">> => genlib:to_binary(P)};
+prepare_param({offset, P})         -> #{<<"offset">> => genlib:to_binary(P)};
+prepare_param({from_time, P})      -> #{<<"fromTime">> => genlib_format:format_datetime_iso8601(P)};
+prepare_param({to_time, P})        -> #{<<"toTime">> => genlib_format:format_datetime_iso8601(P)};
+prepare_param({status, P})         -> #{<<"status">> => genlib:to_binary(P)};
+prepare_param({split_unit, P})     -> #{<<"splitUnit">> => genlib:to_binary(P)};
+prepare_param({split_size, P})     -> #{<<"splitSize">> => genlib:to_binary(P)};
+prepare_param({payment_method, P}) -> #{<<"paymentMethod">> => genlib:to_binary(P)};
+prepare_param({ParamName, P})      -> #{genlib:to_binary(ParamName) => P}.
 
 -spec make_request(context(), map()) ->
     {string(), map(), list()}.

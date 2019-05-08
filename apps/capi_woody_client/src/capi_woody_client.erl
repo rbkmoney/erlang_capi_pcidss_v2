@@ -13,7 +13,7 @@
     woody:result().
 
 call_service(ServiceName, Function, Args, Context) ->
-    call_service(ServiceName, Function, Args, Context, capi_woody_event_handler).
+    call_service(ServiceName, Function, Args, Context, scoper_woody_event_handler).
 
 -spec call_service(service_name(), woody:func(), [term()], woody_context:ctx(), woody:ev_handler()) ->
     woody:result().
@@ -68,28 +68,10 @@ get_service_url(ServiceName) ->
 
 -spec get_service_modname(service_name()) -> woody:service().
 
-get_service_modname(invoicing) ->
-    {dmsl_payment_processing_thrift, 'Invoicing'};
-get_service_modname(invoice_templating) ->
-    {dmsl_payment_processing_thrift, 'InvoiceTemplating'};
 get_service_modname(cds_storage) ->
     {dmsl_cds_thrift, 'Storage'};
 get_service_modname(merchant_stat) ->
     {dmsl_merch_stat_thrift, 'MerchantStatistics'};
-get_service_modname(reporting) ->
-    {dmsl_reporting_thrift, 'Reporting'};
-get_service_modname(repository_client) ->
-    {dmsl_domain_config_thrift, 'RepositoryClient'};
-get_service_modname(accounter) ->
-    {dmsl_accounter_thrift, 'Accounter'};
-get_service_modname(geo_ip_service) ->
-    {dmsl_geo_ip_thrift, 'GeoIpService'};
-get_service_modname(webhook_manager) ->
-    {dmsl_webhooker_thrift, 'WebhookManager'};
-get_service_modname(customer_management) ->
-    {dmsl_payment_processing_thrift, 'CustomerManagement'};
-get_service_modname(party_management) ->
-    {dmsl_payment_processing_thrift, 'PartyManagement'};
 get_service_modname(payment_tool_provider_apple_pay) ->
     {dmsl_payment_tool_provider_thrift, 'PaymentToolProvider'};
 get_service_modname(payment_tool_provider_google_pay) ->
