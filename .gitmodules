@@ -4,5 +4,5 @@
 	branch = master
 [submodule "schemes/swag"]
 	path = schemes/swag
-	branch = release/v2
+	branch = release/v3
 	url = git@github.com:rbkmoney/swag.git
