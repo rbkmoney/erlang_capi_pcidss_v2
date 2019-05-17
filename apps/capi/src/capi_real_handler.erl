@@ -88,13 +88,14 @@ handle_request(OperationID, Req, Context) ->
 ) ->
     {Code :: non_neg_integer(), Headers :: [], Response :: #{}}.
 
-process_request('CreatePaymentResource', Req, Context, ReqCtx) ->
+process_request('CreatePaymentResource' = OperationID, Req, Context, ReqCtx) ->
     Params = maps:get('PaymentResourceParams', Req),
     ClientInfo = enrich_client_info(maps:get(<<"clientInfo">>, Params), Context),
     PartyID = get_party_id(Context),
     try
         Data = maps:get(<<"paymentTool">>, Params), % "V" !!!!
-        IdempotentKey = capi_bender:get_idempotent_key(<<"payment_resource">>, PartyID, undefined),
+        IdempotentPrefix = get_prefix_from_operation_id(OperationID),
+        IdempotentKey = capi_bender:get_idempotent_key(IdempotentPrefix, PartyID, undefined),
         {PaymentTool, PaymentSessionID} = case Data of
             #{<<"paymentToolType">> := <<"CardData">>} ->
                 process_card_data(Data, IdempotentKey, ReqCtx);
@@ -116,6 +117,9 @@ process_request('CreatePaymentResource', Req, Context, ReqCtx) ->
     end.
 
 %%%
+
+get_prefix_from_operation_id(OperationID) ->
+    atom_to_binary(OperationID, utf8).
 
 service_call(ServiceName, Function, Args, Context) ->
     capi_woody_client:call_service(ServiceName, Function, Args, Context).
