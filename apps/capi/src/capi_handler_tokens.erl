@@ -26,7 +26,7 @@ process_request('CreatePaymentResource', Req, Context) ->
         Data = maps:get(<<"paymentTool">>, Params), % "V" ????
         PartyID = capi_handler_utils:get_party_id(Context),
         ExternalID = maps:get(<<"externalID">>, Params, undefined),
-        IdempotentKey = capi_bender:get_idempotent_key(<<"resources">>, PartyID, ExternalID),
+        IdempotentKey = capi_bender:get_idempotent_key(<<"payment_resource">>, PartyID, ExternalID),
         IdempotentParams = {ExternalID, IdempotentKey},
         {PaymentTool, PaymentSessionID} =
             case Data of
