@@ -10,6 +10,8 @@
 -export([gen_by_constant/4]).
 -export([get_idempotent_key/3]).
 
+-export([get_prefix_from_operation_id/1]).
+
 -define(SCHEMA_VER1, 1).
 
 -spec gen_by_snowflake(binary(), integer(), woody_context()) ->
@@ -48,6 +50,12 @@ get_idempotent_key(Prefix, PartyID, undefined) ->
     get_idempotent_key(Prefix, PartyID, gen_external_id());
 get_idempotent_key(Prefix, PartyID, ExternalID) ->
     <<"capi/", Prefix/binary, "/", PartyID/binary, "/", ExternalID/binary>>.
+
+-spec get_prefix_from_operation_id(atom()) ->
+    binary().
+
+get_prefix_from_operation_id(OperationID) ->
+    atom_to_binary(OperationID, utf8).
 
 %% Internal
 

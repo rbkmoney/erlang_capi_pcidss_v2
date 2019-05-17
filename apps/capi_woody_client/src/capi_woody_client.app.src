@@ -5,7 +5,6 @@
         kernel,
         stdlib,
         thrift,
-        bender_proto,
         woody,
         dmsl,
         genlib,
