@@ -63,7 +63,8 @@ generate_id(Key, BenderSchema, Hash, WoodyCtx) ->
     }),
     Args = [Key, BenderSchema, Context],
     Result = case capi_woody_client:call_service(bender, 'GenerateID', Args, WoodyCtx) of
-        {ok, #bender_GenerationResult{internal_id = InternalID, context = undefined}} -> {ok, InternalID};
+        {ok, #bender_GenerationResult{internal_id = InternalID, context = undefined}} ->
+            {ok, InternalID};
         {ok, #bender_GenerationResult{internal_id = InternalID, context = Ctx}}       ->
             #{<<"params_hash">> := BenderHash} = capi_msgp_marshalling:unmarshal(Ctx),
             {ok, InternalID, BenderHash}
