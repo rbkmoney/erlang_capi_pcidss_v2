@@ -11,6 +11,7 @@
         capi_woody_client,
         dmsl,
         binbase_proto,
+        bender_proto,
         swag_server,
         cowboy_cors,
         cowboy_access_log,
