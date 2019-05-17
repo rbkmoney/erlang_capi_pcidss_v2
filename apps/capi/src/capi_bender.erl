@@ -41,9 +41,11 @@ gen_by_constant(IdempotentKey, ConstantID, Hash, WoodyContext) ->
     generate_id(IdempotentKey, Constant, Hash, WoodyContext).
 
 
--spec get_idempotent_key(binary(), binary(), binary() | undefined) ->
+-spec get_idempotent_key(atom() | binary(), binary(), binary() | undefined) ->
     binary().
 
+get_idempotent_key(Prefix, PartyID, ExternalID) when is_atom(Prefix) ->
+    get_idempotent_key(atom_to_binary(Prefix, utf8), PartyID, ExternalID);
 get_idempotent_key(Prefix, PartyID, undefined) ->
     get_idempotent_key(Prefix, PartyID, gen_external_id());
 get_idempotent_key(Prefix, PartyID, ExternalID) ->
@@ -61,7 +63,8 @@ generate_id(Key, BenderSchema, Hash, WoodyContext) ->
     }),
     Args = [Key, BenderSchema, Context],
     Result = case capi_woody_client:call_service(bender, 'GenerateID', Args, WoodyContext) of
-        {ok, #bender_GenerationResult{internal_id = InternalID, context = undefined}} -> {ok, InternalID};
+        {ok, #bender_GenerationResult{internal_id = InternalID, context = undefined}} ->
+            {ok, InternalID};
         {ok, #bender_GenerationResult{internal_id = InternalID, context = Ctx}}       ->
             #{<<"params_hash">> := BenderHash} = capi_msgp_marshalling:unmarshal(Ctx),
             {ok, InternalID, BenderHash}

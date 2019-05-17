@@ -26,8 +26,7 @@ process_request('CreatePaymentResource' = OperationID, Req, Context) ->
         Data = maps:get(<<"paymentTool">>, Params), % "V" ????
         PartyID = capi_handler_utils:get_party_id(Context),
         ExternalID = maps:get(<<"externalID">>, Params, undefined),
-        IdempotentPrefix = get_prefix_from_operation_id(OperationID),
-        IdempotentKey = capi_bender:get_idempotent_key(IdempotentPrefix, PartyID, ExternalID),
+        IdempotentKey = capi_bender:get_idempotent_key(OperationID, PartyID, ExternalID),
         IdempotentParams = {ExternalID, IdempotentKey},
         {PaymentTool, PaymentSessionID} =
             case Data of
@@ -55,9 +54,6 @@ process_request('CreatePaymentResource' = OperationID, Req, Context) ->
 
 process_request(_OperationID, _Req, _Context) ->
     {error, noimpl}.
-
-get_prefix_from_operation_id(OperationID) ->
-    atom_to_binary(OperationID, utf8).
 
 enrich_client_info(ClientInfo, Context) ->
     IP = case is_ip_replacement_allowed(Context) of
