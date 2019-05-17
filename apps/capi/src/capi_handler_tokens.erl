@@ -55,9 +55,6 @@ process_request('CreatePaymentResource' = OperationID, Req, Context) ->
 process_request(_OperationID, _Req, _Context) ->
     {error, noimpl}.
 
-get_prefix_from_operation_id(OperationID) ->
-    atom_to_binary(OperationID, utf8).
-
 enrich_client_info(ClientInfo, Context) ->
     IP = case is_ip_replacement_allowed(Context) of
         true ->
