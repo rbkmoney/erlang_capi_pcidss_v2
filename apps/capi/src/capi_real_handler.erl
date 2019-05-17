@@ -94,8 +94,7 @@ process_request('CreatePaymentResource' = OperationID, Req, Context, ReqCtx) ->
     PartyID = get_party_id(Context),
     try
         Data = maps:get(<<"paymentTool">>, Params), % "V" !!!!
-        IdempotentPrefix = capi_bender:get_prefix_from_operation_id(OperationID),
-        IdempotentKey = capi_bender:get_idempotent_key(IdempotentPrefix, PartyID, undefined),
+        IdempotentKey = capi_bender:get_idempotent_key(OperationID, PartyID, undefined),
         {PaymentTool, PaymentSessionID} = case Data of
             #{<<"paymentToolType">> := <<"CardData">>} ->
                 process_card_data(Data, IdempotentKey, ReqCtx);
