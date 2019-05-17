@@ -48,9 +48,8 @@
     details = Details
 }).
 
--define(PUT_CARD_DATA_RESULT, #'PutCardDataResult'{
-    bank_card = ?BANK_CARD,
-    session_id = ?STRING
+-define(PUT_CARD_RESULT, #'PutCardResult'{
+    bank_card = ?BANK_CARD
 }).
 
 -define(APPLE_PAY_DETAILS, {apple, #paytoolprv_ApplePayDetails{
