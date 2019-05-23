@@ -134,24 +134,20 @@ end_per_testcase(_Name, C) ->
 create_visa_payment_resource_ok_test(Config) ->
     mock_services([
         {cds_storage, fun
-            ('PutCardData', [
-                #'CardData'{pan = <<"411111", _:6/binary, Mask:4/binary>>},
-                #'SessionData'{
-                    auth_data = {card_security_code, #'CardSecurityCode'{
-                        value = <<"232">>
-                    }}
-                }
+            ('PutSession', _) -> {ok, ok};
+            ('PutCard', [
+                #'CardData'{pan = <<"411111", _:6/binary, Mask:4/binary>>}
             ]) ->
-                {ok, #'PutCardDataResult'{
+                {ok, #'PutCardResult'{
                     bank_card = #domain_BankCard{
                         token = ?STRING,
                         payment_system = visa,
                         bin = <<"411111">>,
                         masked_pan = Mask
-                    },
-                    session_id = ?STRING
+                    }
                 }}
         end},
+        {bender, fun('GenerateID', _) -> {ok, capi_ct_helper_bender:get_result(<<"bender_key">>)} end},
         {binbase, fun('Lookup', _) -> {ok, ?BINBASE_LOOKUP_RESULT(<<"VISA">>)} end}
     ], Config),
     ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
@@ -177,24 +173,20 @@ create_visa_payment_resource_ok_test(Config) ->
 create_nspkmir_payment_resource_ok_test(Config) ->
     mock_services([
         {cds_storage, fun
-            ('PutCardData', [
-                #'CardData'{pan = <<"22001111", _:6/binary, Mask:2/binary>>},
-                #'SessionData'{
-                    auth_data = {card_security_code, #'CardSecurityCode'{
-                        value = <<"232">>
-                    }}
-                }
+            ('PutSession', _) -> {ok, ok};
+            ('PutCard', [
+                #'CardData'{pan = <<"22001111", _:6/binary, Mask:2/binary>>}
             ]) ->
-                {ok, #'PutCardDataResult'{
+                {ok, #'PutCardResult'{
                     bank_card = #domain_BankCard{
                         token = ?STRING,
                         payment_system = nspkmir,
                         bin = <<"22001111">>,
                         masked_pan = Mask
-                    },
-                    session_id = ?STRING
+                    }
                 }}
         end},
+        {bender, fun('GenerateID', _) -> {ok, capi_ct_helper_bender:get_result(<<"bender_key">>)} end},
         {binbase, fun('Lookup', _) -> {ok, ?BINBASE_LOOKUP_RESULT(<<"NSPK MIR">>)} end}
     ], Config),
     ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
@@ -252,7 +244,11 @@ create_qw_payment_resource_ok_test(Config) ->
 create_applepay_tokenized_payment_resource_ok_test(Config) ->
     mock_services([
         {payment_tool_provider_apple_pay, fun('Unwrap', _) -> {ok, ?UNWRAPPED_PAYMENT_TOOL(?APPLE_PAY_DETAILS)} end},
-        {cds_storage, fun('PutCardData', _) -> {ok, ?PUT_CARD_DATA_RESULT} end},
+        {cds_storage, fun
+            ('PutSession', _) -> {ok, ok};
+            ('PutCard', _) -> {ok, ?PUT_CARD_RESULT}
+        end},
+        {bender, fun('GenerateID', _) -> {ok, capi_ct_helper_bender:get_result(<<"bender_key">>)} end},
         {binbase, fun('Lookup', _) -> {ok, ?BINBASE_LOOKUP_RESULT} end}
     ], Config),
     ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
@@ -272,7 +268,11 @@ create_applepay_tokenized_payment_resource_ok_test(Config) ->
 create_googlepay_tokenized_payment_resource_ok_test(Config) ->
     mock_services([
         {payment_tool_provider_google_pay, fun('Unwrap', _) -> {ok, ?UNWRAPPED_PAYMENT_TOOL(?GOOGLE_PAY_DETAILS)} end},
-        {cds_storage, fun('PutCardData', _) -> {ok, ?PUT_CARD_DATA_RESULT} end},
+        {cds_storage, fun
+            ('PutSession', _) -> {ok, ok};
+            ('PutCard', _) -> {ok, ?PUT_CARD_RESULT}
+        end},
+        {bender, fun('GenerateID', _) -> {ok, capi_ct_helper_bender:get_result(<<"bender_key">>)} end},
         {binbase, fun('Lookup', _) -> {ok, ?BINBASE_LOOKUP_RESULT} end}
     ], Config),
     ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
@@ -305,9 +305,11 @@ create_googlepay_plain_payment_resource_ok_test(Config) ->
                 )}
             end
         },
-        {cds_storage,
-            fun('PutCardData', _) -> {ok, ?PUT_CARD_DATA_RESULT} end
-        },
+        {cds_storage, fun
+            ('PutSession', _) -> {ok, ok};
+            ('PutCard', _) -> {ok, ?PUT_CARD_RESULT}
+        end},
+        {bender, fun('GenerateID', _) -> {ok, capi_ct_helper_bender:get_result(<<"bender_key">>)} end},
         {binbase,
             fun('Lookup', _) -> {ok, ?BINBASE_LOOKUP_RESULT} end
         }

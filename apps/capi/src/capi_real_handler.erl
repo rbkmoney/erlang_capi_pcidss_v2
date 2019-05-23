@@ -88,20 +88,22 @@ handle_request(OperationID, Req, Context) ->
 ) ->
     {Code :: non_neg_integer(), Headers :: [], Response :: #{}}.
 
-process_request('CreatePaymentResource', Req, Context, ReqCtx) ->
+process_request('CreatePaymentResource' = OperationID, Req, Context, ReqCtx) ->
     Params = maps:get('PaymentResourceParams', Req),
     ClientInfo = enrich_client_info(maps:get(<<"clientInfo">>, Params), Context),
+    PartyID = get_party_id(Context),
     try
-        V = maps:get(<<"paymentTool">>, Params),
-        {PaymentTool, PaymentSessionID} = case V of
+        Data = maps:get(<<"paymentTool">>, Params), % "V" !!!!
+        IdempotentKey = capi_bender:get_idempotent_key(OperationID, PartyID, undefined),
+        {PaymentTool, PaymentSessionID} = case Data of
             #{<<"paymentToolType">> := <<"CardData">>} ->
-                process_card_data(V, ReqCtx);
+                process_card_data(Data, IdempotentKey, ReqCtx);
             #{<<"paymentToolType">> := <<"PaymentTerminalData">>} ->
-                process_payment_terminal_data(V, ReqCtx);
+                process_payment_terminal_data(Data, ReqCtx);
             #{<<"paymentToolType">> := <<"DigitalWalletData">>} ->
-                process_digital_wallet_data(V, ReqCtx);
+                process_digital_wallet_data(Data, ReqCtx);
             #{<<"paymentToolType">> := <<"TokenizedCardData">>} ->
-                process_tokenized_card_data(V, ReqCtx)
+                process_tokenized_card_data(Data, IdempotentKey, ReqCtx)
         end,
         {ok, {201, [], decode_disposable_payment_resource(#domain_DisposablePaymentResource{
             payment_tool = PaymentTool,
@@ -152,6 +154,9 @@ get_auth_context(#{auth_context := AuthContext}) ->
 
 get_peer_info(#{peer := Peer}) ->
     Peer.
+
+get_party_id(Context) ->
+    capi_auth:get_subject_id(get_auth_context(Context)).
 
 decode_bank_card(#domain_BankCard{
     'token'  = Token,
@@ -306,26 +311,35 @@ prepare_client_ip(Context) ->
     #{ip_address := IP} = get_peer_info(Context),
     genlib:to_binary(inet:ntoa(IP)).
 
-process_card_data(Data, ReqCtx) ->
-    put_card_data_to_cds(encode_card_data(Data), encode_session_data(Data), ReqCtx).
+process_card_data(Data, IdempotentKey, ReqCtx) ->
+    CardData = encode_card_data(Data),
+    SessionData = encode_session_data(Data),
+    put_card_data_to_cds(CardData, SessionData, IdempotentKey, ReqCtx).
 
-put_card_data_to_cds(CardData, SessionData, ReqCtx) ->
+put_card_to_cds(CardData, ReqCtx) ->
     BinData = lookup_bank_info(CardData#'CardData'.pan, ReqCtx),
-    case service_call(cds_storage, 'PutCardData', [CardData, SessionData], ReqCtx) of
-        {ok, #'PutCardDataResult'{session_id = SessionID, bank_card = BankCard}} ->
-            {{bank_card, expand_card_info(BankCard, BinData)}, SessionID};
-        {exception, Exception} ->
-            case Exception of
-                #'InvalidCardData'{} ->
-                    throw({ok, {400, [], logic_error(invalidRequest, <<"Card data is invalid">>)}});
-                #'KeyringLocked'{} ->
-                    % TODO
-                    % It's better for the cds to signal woody-level unavailability when the
-                    % keyring is locked, isn't it? It could always mention keyring lock as a
-                    % reason in a woody error definition.
-                    throw({error, reply_5xx(503)})
-            end
+    case service_call(cds_storage, 'PutCard', [CardData], ReqCtx) of
+        {ok, #'PutCardResult'{bank_card = BankCard}} ->
+            {bank_card, expand_card_info(
+                BankCard,
+                BinData
+            )};
+        {exception, #'InvalidCardData'{}} ->
+            throw({ok, {400, [], logic_error(invalidRequest, <<"Card data is invalid">>)}})
     end.
+
+put_session_to_cds(SessionID, SessionData, ReqCtx) ->
+    {ok, ok} = service_call(cds_storage, 'PutSession', [SessionID, SessionData], ReqCtx),
+    ok.
+
+put_card_data_to_cds(CardData, SessionData, IdempotentKey, ReqCtx) ->
+    BankCard = put_card_to_cds(CardData, ReqCtx),
+    {bank_card, #domain_BankCard{token = Token}} = BankCard,
+    RandomID = gen_random_id(),
+    Hash = erlang:phash2(Token),
+    {ok, SessionID} = capi_bender:gen_by_constant(IdempotentKey, RandomID, Hash, ReqCtx),
+    ok = put_session_to_cds(SessionID, SessionData, ReqCtx),
+    {BankCard, SessionID}.
 
 lookup_bank_info(Pan, ReqCtx) ->
     RequestVersion = {'last', #binbase_Last{}},
@@ -411,7 +425,7 @@ process_digital_wallet_data(Data, _ReqCtx) ->
     end,
     {{digital_wallet, DigitalWallet}, <<>>}.
 
-process_tokenized_card_data(Data, ReqCtx) ->
+process_tokenized_card_data(Data, IdempotentKey, ReqCtx) ->
     CallResult = service_call(
         get_token_provider_service_name(Data),
         'Unwrap',
@@ -428,6 +442,7 @@ process_tokenized_card_data(Data, ReqCtx) ->
         put_card_data_to_cds(
             encode_tokenized_card_data(UnwrappedPaymentTool),
             encode_tokenized_session_data(UnwrappedPaymentTool),
+            IdempotentKey,
             ReqCtx
         ),
         UnwrappedPaymentTool
@@ -585,3 +600,6 @@ wrap_payment_session(ClientInfo, PaymentSession) ->
         <<"paymentSession">> => PaymentSession
     }).
 
+gen_random_id() ->
+    Random = crypto:strong_rand_bytes(16),
+    genlib_format:format_int_base(binary:decode_unsigned(Random), 62).
