@@ -15,8 +15,8 @@
 -behaviour(swag_server_logic_handler).
 
 %% API callbacks
--export([authorize_api_key/2]).
--export([handle_request/3]).
+-export([authorize_api_key/3]).
+-export([handle_request/4]).
 
 %% @WARNING Must be refactored in case of different classes of users using this API
 -define(REALM, <<"external">>).
@@ -32,10 +32,10 @@
 
 -define(CAPI_NS, <<"com.rbkmoney.capi">>).
 
--spec authorize_api_key(swag_server:operation_id(), swag_server:api_key()) ->
+-spec authorize_api_key(swag_server:operation_id(), swag_server:api_key(), handler_opts()) ->
     Result :: false | {true, capi_auth:context()}.
 
-authorize_api_key(OperationID, ApiKey) ->
+authorize_api_key(OperationID, ApiKey, _HandlerOpts) ->
     scoper:scope(?SWAG_HANDLER_SCOPE, #{operation_id => OperationID, api_key => ApiKey}, fun() ->
         _ = lager:debug("Api key authorization started"),
         case uac:authorize_api_key(ApiKey, get_verification_opts()) of
@@ -52,15 +52,18 @@ get_verification_opts() ->
     #{}.
 
 -type request_data() :: #{atom() | binary() => term()}.
+-type response()            :: swag_server:response().
+-type handler_opts()        :: swag_server:handler_opts(_).
 
 -spec handle_request(
     OperationID :: swag_server:operation_id(),
     Req :: request_data(),
-    Context :: swag_server:request_context()
+    Context :: swag_server:request_context(),
+    HandlerOpts :: handler_opts()
 ) ->
-    {ok | error, swag_server_logic_handler:response()}.
+    {ok | error, response()}.
 
-handle_request(OperationID, Req, Context) ->
+handle_request(OperationID, Req, Context, _HandlerOpts) ->
     _ = lager:info("Processing request ~p", [OperationID]),
     try
         ok = scoper:add_scope(?SWAG_HANDLER_SCOPE, #{operation_id => OperationID}),
@@ -71,7 +74,7 @@ handle_request(OperationID, Req, Context) ->
                 process_request(OperationID, Req, Context, ReqContext);
             {error, _} = Error ->
                 _ = lager:info("Operation ~p authorization failed due to ~p", [OperationID, Error]),
-                {error, {401, [], general_error(<<"Unauthorized operation">>)}}
+                {error, {401, #{}, general_error(<<"Unauthorized operation">>)}}
         end
     catch
         error:{woody_error, {Source, Class, Details}} ->
@@ -86,7 +89,7 @@ handle_request(OperationID, Req, Context) ->
     Context :: swag_server:request_context(),
     ReqCtx :: woody_context:ctx()
 ) ->
-    {Code :: non_neg_integer(), Headers :: [], Response :: #{}}.
+    {Code :: non_neg_integer(), Headers :: #{}, Response :: #{}}.
 
 process_request('CreatePaymentResource' = OperationID, Req, Context, ReqCtx) ->
     Params = maps:get('PaymentResourceParams', Req),
@@ -105,7 +108,7 @@ process_request('CreatePaymentResource' = OperationID, Req, Context, ReqCtx) ->
             #{<<"paymentToolType">> := <<"TokenizedCardData">>} ->
                 process_tokenized_card_data(Data, IdempotentKey, ReqCtx)
         end,
-        {ok, {201, [], decode_disposable_payment_resource(#domain_DisposablePaymentResource{
+        {ok, {201, #{}, decode_disposable_payment_resource(#domain_DisposablePaymentResource{
             payment_tool = PaymentTool,
             payment_session_id = PaymentSessionID,
             client_info = encode_client_info(ClientInfo)
@@ -302,7 +305,7 @@ process_woody_error(_Source, result_unknown, _Details) ->
     {error, reply_5xx(504)}.
 
 reply_5xx(Code) when Code >= 500 andalso Code < 600 ->
-    {Code, [], <<>>}.
+    {Code, #{}, <<>>}.
 
 enrich_client_info(ClientInfo, Context) ->
     ClientInfo#{<<"ip">> => prepare_client_ip(Context)}.
@@ -325,7 +328,7 @@ put_card_to_cds(CardData, ReqCtx) ->
                 BinData
             )};
         {exception, #'InvalidCardData'{}} ->
-            throw({ok, {400, [], logic_error(invalidRequest, <<"Card data is invalid">>)}})
+            throw({ok, {400, #{}, logic_error(invalidRequest, <<"Card data is invalid">>)}})
     end.
 
 put_session_to_cds(SessionID, SessionData, ReqCtx) ->
@@ -347,7 +350,7 @@ lookup_bank_info(Pan, ReqCtx) ->
         {ok, #'binbase_ResponseData'{bin_data = BinData, version = Version}} ->
             {BinData, Version};
         {exception, #'binbase_BinNotFound'{}} ->
-            throw({ok, {400, [], logic_error(invalidRequest, <<"Card data is invalid">>)}})
+            throw({ok, {400, #{}, logic_error(invalidRequest, <<"Card data is invalid">>)}})
     end.
 
 expand_card_info(BankCard, {BinData, Version}) ->
@@ -366,9 +369,9 @@ expand_card_info(BankCard, {BinData, Version}) ->
         }
     catch
         throw:{encode_binbase_payment_system, invalid_payment_system} ->
-            throw({ok, {400, [], logic_error(invalidRequest, <<"Unsupported card">>)}});
+            throw({ok, {400, #{}, logic_error(invalidRequest, <<"Unsupported card">>)}});
         throw:{encode_residence, invalid_residence} ->
-            throw({ok, {400, [], logic_error(invalidRequest, <<"Unsupported card">>)}})
+            throw({ok, {400, #{}, logic_error(invalidRequest, <<"Unsupported card">>)}})
     end.
 
 encode_binbase_payment_system(<<"VISA">>)                      -> visa;
@@ -436,7 +439,7 @@ process_tokenized_card_data(Data, IdempotentKey, ReqCtx) ->
         {ok, Tool} ->
             Tool;
         {exception, #'InvalidRequest'{}} ->
-            throw({ok, {400, [], logic_error(invalidRequest, <<"Tokenized card data is invalid">>)}})
+            throw({ok, {400, #{}, logic_error(invalidRequest, <<"Tokenized card data is invalid">>)}})
     end,
     process_put_card_data_result(
         put_card_data_to_cds(
