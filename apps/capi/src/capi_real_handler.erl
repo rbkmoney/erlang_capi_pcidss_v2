@@ -18,6 +18,8 @@
 -export([authorize_api_key/3]).
 -export([handle_request/4]).
 
+-export_type([request_data/0]).
+
 %% @WARNING Must be refactored in case of different classes of users using this API
 -define(REALM, <<"external">>).
 
@@ -33,7 +35,7 @@
 -define(CAPI_NS, <<"com.rbkmoney.capi">>).
 
 -spec authorize_api_key(swag_server:operation_id(), swag_server:api_key(), handler_opts()) ->
-    Result :: false | {true, capi_auth:context()}.
+    Result :: false | {true, uac:context()}.
 
 authorize_api_key(OperationID, ApiKey, _HandlerOpts) ->
     scoper:scope(?SWAG_HANDLER_SCOPE, #{operation_id => OperationID, api_key => ApiKey}, fun() ->
@@ -51,7 +53,7 @@ authorize_api_key(OperationID, ApiKey, _HandlerOpts) ->
 get_verification_opts() ->
     #{}.
 
--type request_data() :: #{atom() | binary() => term()}.
+-type request_data()        :: #{atom() | binary() => term()}.
 -type response()            :: swag_server:response().
 -type handler_opts()        :: swag_server:handler_opts(_).
 
