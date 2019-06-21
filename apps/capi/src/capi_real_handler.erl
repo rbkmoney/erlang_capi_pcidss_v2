@@ -71,11 +71,11 @@ handle_request(OperationID, Req, Context) ->
 
 handle_request_(OperationID, Req, Context) ->
     try
+        ReqContext = create_context(Req, get_auth_context(Context)),
         _ = lager:debug("Processing request"),
         OperationACL = capi_auth:get_operation_access(OperationID, Req),
         case uac:authorize_operation(OperationACL, get_auth_context(Context)) of
             ok ->
-                ReqContext = create_context(Req, get_auth_context(Context)),
                 process_request(OperationID, Req, Context, ReqContext);
             {error, _} = Error ->
                 _ = lager:info("Operation ~p authorization failed due to ~p", [OperationID, Error]),
