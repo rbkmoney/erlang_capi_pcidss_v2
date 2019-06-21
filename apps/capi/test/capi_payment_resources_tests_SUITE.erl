@@ -30,6 +30,7 @@
     create_nspkmir_payment_resource_ok_test/1,
     create_euroset_payment_resource_ok_test/1,
     create_qw_payment_resource_ok_test/1,
+    create_crypto_payment_resource_ok_test/1,
     create_applepay_tokenized_payment_resource_ok_test/1,
     create_googlepay_tokenized_payment_resource_ok_test/1,
     create_googlepay_plain_payment_resource_ok_test/1,
@@ -93,6 +94,7 @@ groups() ->
                 create_nspkmir_payment_resource_ok_test,
                 create_euroset_payment_resource_ok_test,
                 create_qw_payment_resource_ok_test,
+                create_crypto_payment_resource_ok_test,
                 create_applepay_tokenized_payment_resource_ok_test,
                 create_googlepay_tokenized_payment_resource_ok_test,
                 create_googlepay_plain_payment_resource_ok_test,
@@ -136,7 +138,7 @@ init_per_group(payment_resources, Config) ->
     [{context, capi_ct_helper:get_context(Token)} | Config];
 
 init_per_group(ip_replacement_allowed, Config) ->
-    ExtraProperties = #{<<"ip_replacement_allowed">> => <<"true">>},
+    ExtraProperties = #{<<"ip_replacement_allowed">> => true},
     Token = capi_ct_helper:issue_token(?STRING, [{[payment_resources], write}], unlimited, ExtraProperties),
     [{context, capi_ct_helper:get_context(Token)} | Config].
 
@@ -416,6 +418,21 @@ create_qw_payment_resource_ok_test(Config) ->
             <<"paymentToolType">> => <<"DigitalWalletData">>,
             <<"digitalWalletType">> => <<"DigitalWalletQIWI">>,
             <<"phoneNumber">> => <<"+79876543210">>
+        },
+        <<"clientInfo">> => ClientInfo
+    }).
+
+-spec create_crypto_payment_resource_ok_test(_) ->
+    _.
+create_crypto_payment_resource_ok_test(Config) ->
+    ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
+    {ok, #{<<"paymentToolDetails">> := #{
+        <<"detailsType">> := <<"PaymentToolDetailsCryptoWallet">>,
+        <<"cryptoCurrency">> := <<"bitcoinCash">>
+    }}} = capi_client_tokens:create_payment_resource(?config(context, Config), #{
+        <<"paymentTool">> => #{
+            <<"paymentToolType">> => <<"CryptoWalletData">>,
+            <<"cryptoCurrency">> => <<"bitcoinCash">>
         },
         <<"clientInfo">> => ClientInfo
     }).
