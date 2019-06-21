@@ -85,7 +85,7 @@ handle_request(OperationID, Req, SwagContext) ->
 handle_request_(OperationID, Req, SwagContext = #{auth_context := AuthContext}) ->
     try
         WoodyContext = attach_deadline(Req, create_woody_context(Req, AuthContext)),
-        _ = lager:info("Processing request ~p", [OperationID]),
+        _ = lager:debug("Processing request"),
         OperationACL = capi_auth:get_operation_access(OperationID, Req),
         case uac:authorize_operation(OperationACL, AuthContext) of
             ok ->
