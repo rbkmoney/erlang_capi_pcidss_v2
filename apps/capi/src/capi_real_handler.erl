@@ -36,7 +36,7 @@
     Result :: false | {true, capi_auth:context()}.
 
 authorize_api_key(OperationID, ApiKey) ->
-    scoper:scope(?SWAG_HANDLER_SCOPE, #{operation_id => OperationID, api_key => ApiKey}, fun() ->
+    scoper:scope(?SWAG_HANDLER_SCOPE, #{operation_id => OperationID}, fun() ->
         _ = lager:debug("Api key authorization started"),
         case uac:authorize_api_key(ApiKey, get_verification_opts()) of
             {ok, Context} ->
@@ -61,9 +61,17 @@ get_verification_opts() ->
     {ok | error, swag_server_logic_handler:response()}.
 
 handle_request(OperationID, Req, Context) ->
-    _ = lager:info("Processing request ~p", [OperationID]),
+    scoper:scope(
+        ?SWAG_HANDLER_SCOPE,
+        #{
+            operation_id => OperationID
+        },
+        fun() -> handle_request_(OperationID, Req, Context) end
+    ).
+
+handle_request_(OperationID, Req, Context) ->
     try
-        ok = scoper:add_scope(?SWAG_HANDLER_SCOPE, #{operation_id => OperationID}),
+        _ = lager:debug("Processing request"),
         OperationACL = capi_auth:get_operation_access(OperationID, Req),
         case uac:authorize_operation(OperationACL, get_auth_context(Context)) of
             ok ->
@@ -76,8 +84,6 @@ handle_request(OperationID, Req, Context) ->
     catch
         error:{woody_error, {Source, Class, Details}} ->
             process_woody_error(Source, Class, Details)
-    after
-        ok = scoper:remove_scope(?SWAG_HANDLER_SCOPE)
     end.
 
 -spec process_request(
