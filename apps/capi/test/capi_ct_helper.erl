@@ -58,7 +58,7 @@ start_app(woody = AppName) ->
 
 start_app(scoper = AppName) ->
     start_app(AppName, [
-        {storage, scoper_storage_lager}
+        {storage, scoper_storage_logger}
     ]);
 
 start_app(AppName) ->
