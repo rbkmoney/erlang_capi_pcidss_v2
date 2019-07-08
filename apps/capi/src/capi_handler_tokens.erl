@@ -45,7 +45,7 @@ process_request('CreatePaymentResource' = OperationID, Req, Context) ->
                 payment_session_id = PaymentSessionID,
                 client_info = capi_handler_encoder:encode_client_info(ClientInfo)
             },
-        {ok, {201, [], capi_handler_decoder:decode_disposable_payment_resource(PaymentResource)}}
+        {ok, {201, #{}, capi_handler_decoder:decode_disposable_payment_resource(PaymentResource)}}
     catch
         Result -> Result
     end;
@@ -56,23 +56,18 @@ process_request(_OperationID, _Req, _Context) ->
     {error, noimpl}.
 
 enrich_client_info(ClientInfo, Context) ->
-    IP = case is_ip_replacement_allowed(Context) of
+    Claims = capi_handler_utils:get_auth_context(Context),
+    IP = case capi_auth:get_claim(<<"ip_replacement_allowed">>, Claims, false) of
         true ->
             UncheckedIP = maps:get(<<"ip">>, ClientInfo, prepare_client_ip(Context)),
             validate_ip(UncheckedIP);
-        _ ->
+        false ->
+            prepare_client_ip(Context);
+        Value ->
+            _ = logger:notice("Unexpected ip_replacement_allowed value: ~p", [Value]),
             prepare_client_ip(Context)
     end,
     ClientInfo#{<<"ip">> => IP}.
-
-is_ip_replacement_allowed(Context) ->
-    Claims = capi_handler_utils:get_auth_context(Context),
-    case capi_auth:get_claim(<<"ip_replacement_allowed">>, Claims, undefined) of
-        <<"true">> ->
-            true;
-        _ ->
-            false
-    end.
 
 validate_ip(IP) ->
     % placeholder so far.
