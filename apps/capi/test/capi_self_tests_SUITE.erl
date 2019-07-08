@@ -113,7 +113,7 @@ oops_body_test(Config) ->
     Token = maps:get(token, Context),
     {ok, 500, _, OopsBody} = hackney:request(
         post,
-        "localhost:8080/v2/processing/payment-resources",
+        "localhost:8080/v3/processing/payment-resources",
         [
             {<<"Authorization">>, <<<<"Bearer ">>/binary, Token/binary>>},
             {<<"Content-Type">>, <<"application/json; charset=UTF-8">>},
