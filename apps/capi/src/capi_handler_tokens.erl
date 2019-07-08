@@ -45,7 +45,7 @@ process_request('CreatePaymentResource' = OperationID, Req, Context) ->
                 payment_session_id = PaymentSessionID,
                 client_info = capi_handler_encoder:encode_client_info(ClientInfo)
             },
-        {ok, {201, [], capi_handler_decoder:decode_disposable_payment_resource(PaymentResource)}}
+        {ok, {201, #{}, capi_handler_decoder:decode_disposable_payment_resource(PaymentResource)}}
     catch
         Result -> Result
     end;
@@ -60,7 +60,10 @@ enrich_client_info(ClientInfo, Context) ->
         true ->
             UncheckedIP = maps:get(<<"ip">>, ClientInfo, prepare_client_ip(Context)),
             validate_ip(UncheckedIP);
-        _ ->
+        false ->
+            prepare_client_ip(Context);
+        Value ->
+            _ = logger:notice("Unexpected ip_replacement_allowed value: ~p", [Value]),
             prepare_client_ip(Context)
     end,
     ClientInfo#{<<"ip">> => IP}.
