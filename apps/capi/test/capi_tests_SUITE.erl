@@ -87,7 +87,6 @@ groups() ->
 init_per_suite(Config) ->
     SupPid = start_mocked_service_sup(),
     Apps =
-        capi_ct_helper:start_app(lager)  ++
         capi_ct_helper:start_app(woody)  ++
         capi_ct_helper:start_app(scoper) ++
         start_capi(Config),
