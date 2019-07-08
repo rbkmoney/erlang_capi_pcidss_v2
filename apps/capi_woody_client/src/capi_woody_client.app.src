@@ -7,7 +7,6 @@
         thrift,
         woody,
         dmsl,
-        genlib,
-        lager
+        genlib
     ]}
 ]}.
