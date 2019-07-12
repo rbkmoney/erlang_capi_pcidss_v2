@@ -123,11 +123,7 @@ put_card_to_cds(CardData, SessionData, Context) ->
     Call = {cds_storage, 'PutCard', [CardData]},
     case capi_handler_utils:service_call(Call, Context) of
         {ok, #'PutCardResult'{bank_card = BankCard}} ->
-            {bank_card, expand_card_info(
-                BankCard,
-                BinData,
-                undef_cvv(SessionData)
-            )};
+            {bank_card, expand_card_info(CardData, BankCard, BinData, undef_cvv(SessionData))};
         {exception, #'InvalidCardData'{}} ->
             throw({ok, logic_error(invalidRequest, <<"Card data is invalid">>)})
     end.
@@ -176,9 +172,11 @@ undef_cvv(#'SessionData'{
 undef_cvv(#'SessionData'{}) ->
     undefined.
 
-expand_card_info(BankCard, {BinData, Version}, HaveCVV) ->
+expand_card_info(CardData, BankCard, {BinData, Version}, HaveCVV) ->
     try
         BankCard#'domain_BankCard'{
+            bin = get_first6(CardData),
+            masked_pan = get_last4(CardData),
             payment_system = encode_binbase_payment_system(BinData#'binbase_BinData'.payment_system),
             issuer_country = capi_handler_encoder:encode_residence(BinData#'binbase_BinData'.iso_country_code),
             bank_name = BinData#'binbase_BinData'.bank_name,
@@ -197,6 +195,12 @@ expand_card_info(BankCard, {BinData, Version}, HaveCVV) ->
         throw:{encode_residence, invalid_residence} ->
             throw({ok, logic_error(invalidRequest, <<"Unsupported card">>)})
     end.
+
+get_first6(#'CardData'{pan = CardNumber}) ->
+    binary:part(CardNumber, {0, 6}).
+
+get_last4(#'CardData'{pan = CardNumber}) ->
+    binary:part(CardNumber, {byte_size(CardNumber), -4}).
 
 encode_binbase_payment_system(<<"VISA">>)                      -> visa;
 encode_binbase_payment_system(<<"VISA/DANKORT">>)              -> visa;         % supposedly 🤔
