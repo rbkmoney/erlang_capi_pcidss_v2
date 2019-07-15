@@ -333,7 +333,9 @@ get_tokenized_bin({card, #paytoolprv_Card{pan = PAN}}) ->
 get_tokenized_bin(_PaymentData) ->
     undefined.
 
-get_tokenized_pan(undefined, {card, #paytoolprv_Card{pan = PAN}}) ->
+% Prefer to get last4 from the PAN itself rather than using the one from the adapter
+% On the other hand, getting a DPAN and no last4 from the adapter is unsupported
+get_tokenized_pan(_Last4, {card, #paytoolprv_Card{pan = PAN}}) ->
     get_last4(PAN);
 get_tokenized_pan(Last4, _PaymentData) when Last4 =/= undefined ->
     Last4.

@@ -450,7 +450,11 @@ create_applepay_tokenized_payment_resource_ok_test(Config) ->
         {binbase, fun('Lookup', _) -> {ok, ?BINBASE_LOOKUP_RESULT} end}
     ], Config),
     ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
-    {ok, #{<<"paymentToolDetails">> := #{<<"paymentSystem">> := <<"mastercard">>}}} =
+    {ok, #{<<"paymentToolDetails">> := Details = #{
+        <<"paymentSystem">> := <<"mastercard">>,
+        <<"cardNumberMask">> := <<"************1234">>,
+        <<"last4">> := <<"1234">>
+    }}} =
         capi_client_tokens:create_payment_resource(?config(context, Config), #{
             <<"paymentTool">> => #{
                 <<"paymentToolType">> => <<"TokenizedCardData">>,
@@ -459,7 +463,8 @@ create_applepay_tokenized_payment_resource_ok_test(Config) ->
                 <<"paymentToken">> => #{}
             },
             <<"clientInfo">> => ClientInfo
-        }).
+        }),
+    false = maps:is_key(<<"first6">>, Details).
 
 -spec create_googlepay_tokenized_payment_resource_ok_test(_) ->
     _.
@@ -474,9 +479,11 @@ create_googlepay_tokenized_payment_resource_ok_test(Config) ->
         {binbase, fun('Lookup', _) -> {ok, ?BINBASE_LOOKUP_RESULT} end}
     ], Config),
     ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
-    {ok, #{<<"paymentToolDetails">> := #{
+    {ok, #{<<"paymentToolDetails">> := Details = #{
         <<"paymentSystem">> := <<"mastercard">>,
-        <<"tokenProvider">> := <<"googlepay">>
+        <<"tokenProvider">> := <<"googlepay">>,
+        <<"cardNumberMask">> := <<"************1234">>,
+        <<"last4">> := <<"1234">>
     }}} =
         capi_client_tokens:create_payment_resource(?config(context, Config), #{
             <<"paymentTool">> => #{
@@ -486,7 +493,8 @@ create_googlepay_tokenized_payment_resource_ok_test(Config) ->
                 <<"paymentToken">> => #{}
             },
             <<"clientInfo">> => ClientInfo
-        }).
+        }),
+    false = maps:is_key(<<"first6">>, Details).
 
 -spec create_googlepay_plain_payment_resource_ok_test(_) ->
     _.
@@ -513,7 +521,12 @@ create_googlepay_plain_payment_resource_ok_test(Config) ->
         }
     ], Config),
     ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
-    {ok, #{<<"paymentToolDetails">> := Details = #{<<"paymentSystem">> := <<"mastercard">>}}} =
+    {ok, #{<<"paymentToolDetails">> := Details = #{
+        <<"paymentSystem">> := <<"mastercard">>,
+        <<"cardNumberMask">> := <<"123456******3456">>,
+        <<"first6">> := <<"123456">>,
+        <<"last4">> := <<"3456">>
+    }}} =
         capi_client_tokens:create_payment_resource(?config(context, Config), #{
             <<"paymentTool">> => #{
                 <<"paymentToolType">> => <<"TokenizedCardData">>,
