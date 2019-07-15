@@ -28,7 +28,7 @@
     ?UNWRAPPED_PAYMENT_TOOL(
         Details,
         {tokenized_card, #paytoolprv_TokenizedCard{
-            dpan = <<"4111111111111111">>,
+            dpan = ?STRING,
             exp_date = #paytoolprv_ExpDate{
                 month = 10,
                 year = 2018

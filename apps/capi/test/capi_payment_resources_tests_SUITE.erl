@@ -186,8 +186,8 @@ create_visa_payment_resource_ok_test(Config) ->
     {ok, #{<<"paymentToolDetails">> := #{
         <<"detailsType">> := <<"PaymentToolDetailsBankCard">>,
         <<"paymentSystem">> := <<"visa">>,
-        <<"lastDigits">> := <<"1111">>,
-        <<"bin">> := <<"411111">>,
+        <<"last4">> := <<"1111">>,
+        <<"first6">> := <<"411111">>,
         <<"cardNumberMask">> := <<"411111******1111">>
     }}} = capi_client_tokens:create_payment_resource(?config(context, Config), #{
         <<"paymentTool">> => #{
@@ -225,8 +225,8 @@ create_visa_with_empty_cvv_ok_test(Config) ->
     {ok, #{<<"paymentToolDetails">> := #{
         <<"detailsType">> := <<"PaymentToolDetailsBankCard">>,
         <<"paymentSystem">> := <<"visa">>,
-        <<"lastDigits">> := <<"1111">>,
-        <<"bin">> := <<"411111">>,
+        <<"last4">>  := <<"1111">>,
+        <<"first6">> := <<"411111">>,
         <<"cardNumberMask">> := <<"411111******1111">>
     }}} = capi_client_tokens:create_payment_resource(?config(context, Config), #{
         <<"paymentTool">> => #{
@@ -275,8 +275,8 @@ create_visa_payment_resource_idemp_ok_test(Config) ->
     PaymentToolDetails = #{
         <<"detailsType">>    => <<"PaymentToolDetailsBankCard">>,
         <<"paymentSystem">>  => <<"visa">>,
-        <<"lastDigits">>     => <<"1111">>,
-        <<"bin">>            => <<"411111">>,
+        <<"last4">>          => <<"1111">>,
+        <<"first6">>         => <<"411111">>,
         <<"cardNumberMask">> => <<"411111******1111">>
     },
     {ok, #{
@@ -377,8 +377,8 @@ create_nspkmir_payment_resource_ok_test(Config) ->
         <<"detailsType">> := <<"PaymentToolDetailsBankCard">>,
         <<"paymentSystem">> := <<"nspkmir">>,
         <<"cardNumberMask">> := <<"220011******1111">>,
-        <<"lastDigits">> := <<"1111">>,
-        <<"bin">> := <<"220011">>
+        <<"last4">> := <<"1111">>,
+        <<"first6">> := <<"220011">>
     }}} = capi_client_tokens:create_payment_resource(?config(context, Config), #{
         <<"paymentTool">> => #{
             <<"paymentToolType">> => <<"CardData">>,
