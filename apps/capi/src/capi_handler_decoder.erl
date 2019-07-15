@@ -68,7 +68,7 @@ decode_payment_terminal(#domain_PaymentTerminal{
 decode_digital_wallet(#domain_DigitalWallet{
     provider = Provider,
     id = ID,
-    toen = Token
+    token = Token
 }) ->
     capi_utils:map_to_base64url(#{
         <<"type"    >> => <<"digital_wallet">>,
