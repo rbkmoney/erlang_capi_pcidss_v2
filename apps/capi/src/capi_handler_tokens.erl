@@ -36,7 +36,7 @@ process_request('CreatePaymentResource' = OperationID, Req, Context) ->
                 #{<<"paymentToolType">> := <<"PaymentTerminalData">>} ->
                     process_payment_terminal_data(Data);
                 #{<<"paymentToolType">> := <<"DigitalWalletData"  >>} ->
-                    process_digital_wallet_data(Data, Context);
+                    process_digital_wallet_data(Data, IdempotentParams, Context);
                 #{<<"paymentToolType">> := <<"TokenizedCardData"  >>} ->
                     process_tokenized_card_data(Data, IdempotentParams, Context);
                 #{<<"paymentToolType">> := <<"CryptoWalletData"   >>} ->
@@ -222,8 +222,8 @@ process_payment_terminal_data(Data) ->
         },
     {{payment_terminal, PaymentTerminal}, <<>>}.
 
-process_digital_wallet_data(Data, Context) ->
-    TokenId = maybe_store_token_in_tds(Data, Context),
+process_digital_wallet_data(Data, IdempotentParams, Context) ->
+    TokenId = maybe_store_token_in_tds(Data, IdempotentParams, Context),
     DigitalWallet = case Data of
         #{<<"digitalWalletType">> := <<"DigitalWalletQIWI">>} ->
             #domain_DigitalWallet{
@@ -234,13 +234,21 @@ process_digital_wallet_data(Data, Context) ->
     end,
     {{digital_wallet, DigitalWallet}, <<>>}.
 
-maybe_store_token_in_tds(#{<<"accessToken">> := TokenContent}, Context) ->
-    TokenId = gen_random_id(),
+maybe_store_token_in_tds(#{<<"accessToken">> := TokenContent}, IdempotentParams, Context) ->
+    % ct:print("~p", [IdempotentParams]),
+    #{woody_context := WoodyCtx} = Context,
+    {ExternalID, IdempotentKey} = IdempotentParams,
     Token = #tds_Token{content = TokenContent},
-    Call = {tds_storage, 'PutToken', [TokenId, Token]},
-    {ok, ok} = capi_handler_utils:service_call(Call, Context),
-    TokenId;
-maybe_store_token_in_tds(_, _Context) ->
+    Hash  = erlang:phash2(Token),
+    case capi_bender:gen_by_snowflake(IdempotentKey, Hash, WoodyCtx) of
+        {ok, TokenId} ->
+            Call     = {tds_storage, 'PutToken', [TokenId, Token]},
+            {ok, ok} = capi_handler_utils:service_call(Call, Context),
+            TokenId;
+        {error, {external_id_conflict, _}} ->
+            throw({ok, logic_error(externalIDConflict, ExternalID)})
+    end;
+maybe_store_token_in_tds(_, _IdempotentParams, _Context) ->
     undefined.
 
 process_tokenized_card_data(Data, IdempotentParams, Context) ->
