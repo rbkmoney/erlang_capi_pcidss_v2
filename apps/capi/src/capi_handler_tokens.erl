@@ -222,14 +222,22 @@ process_payment_terminal_data(Data) ->
     {{payment_terminal, PaymentTerminal}, <<>>}.
 
 process_digital_wallet_data(Data) ->
+    Token = get_digital_wallet_token(Data),
     DigitalWallet = case Data of
         #{<<"digitalWalletType">> := <<"DigitalWalletQIWI">>} ->
             #domain_DigitalWallet{
                 provider = qiwi,
-                id       = maps:get(<<"phoneNumber">>, Data)
+                id       = maps:get(<<"phoneNumber">>, Data),
+                token    = Token
             }
     end,
     {{digital_wallet, DigitalWallet}, <<>>}.
+
+% TODO: add tds logic
+get_digital_wallet_token(#{<<"accessToken">> := _Token}) ->
+    undefined;
+get_digital_wallet_token(_) ->
+    undefined.
 
 process_tokenized_card_data(Data, IdempotentParams, Context) ->
     Call = {get_token_provider_service_name(Data), 'Unwrap', [encode_wrapped_payment_tool(Data)]},
