@@ -468,7 +468,7 @@ create_qw_payment_resource_with_access_token_depends_on_external_id(Config) ->
     BenderResultAny   = capi_ct_helper_bender:get_result(<<"benderkey1">>),
     capi_ct_helper:mock_services([
         {bender,      fun ('GenerateID', [?IDEMPOTENT_KEY | _]) -> {ok, BenderResultExtID};
-                          ('GenerateID', _Args)                -> {ok, BenderResultAny}
+                          ('GenerateID', _Args)                 -> {ok, BenderResultAny}
                       end},
         {tds_storage, fun ('PutToken', _) -> {ok, ok} end}
     ], Config),
