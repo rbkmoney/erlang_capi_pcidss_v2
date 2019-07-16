@@ -235,7 +235,6 @@ process_digital_wallet_data(Data, IdempotentParams, Context) ->
     {{digital_wallet, DigitalWallet}, <<>>}.
 
 maybe_store_token_in_tds(#{<<"accessToken">> := TokenContent}, IdempotentParams, Context) ->
-    % ct:print("~p", [IdempotentParams]),
     #{woody_context := WoodyCtx} = Context,
     {ExternalID, IdempotentKey} = IdempotentParams,
     Token = #tds_Token{content = TokenContent},
