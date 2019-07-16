@@ -427,10 +427,8 @@ create_qw_payment_resource_ok_test(Config) ->
 -spec create_qw_payment_resource_token_ok_test(_) ->
     _.
 create_qw_payment_resource_token_ok_test(Config) ->
-    % BenderResult = capi_ct_helper_bender:get_result(<<"bender key">>),
     capi_ct_helper:mock_services([
-        % {bender,      fun ('GenerateID', _) -> {ok, BenderResult} end}
-        {tds_storage, fun ('PutToken', _)   -> {ok, ok}           end}
+        {tds_storage, fun ('PutToken', _) -> {ok, ok} end}
     ], Config),
     ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
     {ok, #{<<"paymentToolDetails">> := #{
