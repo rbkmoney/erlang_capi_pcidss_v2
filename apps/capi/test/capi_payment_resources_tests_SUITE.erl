@@ -30,6 +30,7 @@
     create_nspkmir_payment_resource_ok_test/1,
     create_euroset_payment_resource_ok_test/1,
     create_qw_payment_resource_ok_test/1,
+    create_qw_payment_resource_token_ok_test/1,
     create_crypto_payment_resource_ok_test/1,
     create_applepay_tokenized_payment_resource_ok_test/1,
     create_googlepay_tokenized_payment_resource_ok_test/1,
@@ -94,6 +95,7 @@ groups() ->
                 create_nspkmir_payment_resource_ok_test,
                 create_euroset_payment_resource_ok_test,
                 create_qw_payment_resource_ok_test,
+                create_qw_payment_resource_token_ok_test,
                 create_crypto_payment_resource_ok_test,
                 create_applepay_tokenized_payment_resource_ok_test,
                 create_googlepay_tokenized_payment_resource_ok_test,
@@ -418,6 +420,29 @@ create_qw_payment_resource_ok_test(Config) ->
             <<"paymentToolType">> => <<"DigitalWalletData">>,
             <<"digitalWalletType">> => <<"DigitalWalletQIWI">>,
             <<"phoneNumber">> => <<"+79876543210">>
+        },
+        <<"clientInfo">> => ClientInfo
+    }).
+
+-spec create_qw_payment_resource_token_ok_test(_) ->
+    _.
+create_qw_payment_resource_token_ok_test(Config) ->
+    % BenderResult = capi_ct_helper_bender:get_result(<<"bender key">>),
+    capi_ct_helper:mock_services([
+        % {bender,      fun ('GenerateID', _) -> {ok, BenderResult} end}
+        {tds_storage, fun ('PutToken', _)   -> {ok, ok}           end}
+    ], Config),
+    ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
+    {ok, #{<<"paymentToolDetails">> := #{
+        <<"detailsType">> := <<"PaymentToolDetailsDigitalWallet">>,
+        <<"digitalWalletDetailsType">> := <<"DigitalWalletDetailsQIWI">>,
+        <<"phoneNumberMask">> := <<"+7******3210">>
+    }}} = capi_client_tokens:create_payment_resource(?config(context, Config), #{
+        <<"paymentTool">> => #{
+            <<"paymentToolType">> => <<"DigitalWalletData">>,
+            <<"digitalWalletType">> => <<"DigitalWalletQIWI">>,
+            <<"phoneNumber">> => <<"+79876543210">>,
+            <<"accessToken">> => <<"some_token">>
         },
         <<"clientInfo">> => ClientInfo
     }).
