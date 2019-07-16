@@ -464,16 +464,16 @@ create_qw_payment_resource_with_access_token_generates_different_payment_token(C
 -spec create_qw_payment_resource_with_access_token_depends_on_external_id(_) ->
     _.
 create_qw_payment_resource_with_access_token_depends_on_external_id(Config) ->
-    BenderResultExtID = capi_ct_helper_bender:get_result(<<"benderkey0">>),
-    BenderResultAny   = capi_ct_helper_bender:get_result(<<"benderkey1">>),
+    BenderResultExtID   = capi_ct_helper_bender:get_result(<<"benderkey0">>),
+    BenderResultNoExtId = capi_ct_helper_bender:get_result(<<"benderkey1">>),
     capi_ct_helper:mock_services([
         {bender,      fun ('GenerateID', [?IDEMPOTENT_KEY | _]) -> {ok, BenderResultExtID};
-                          ('GenerateID', _Args)                 -> {ok, BenderResultAny}
+                          ('GenerateID', _Args)                 -> {ok, BenderResultNoExtId}
                       end},
         {tds_storage, fun ('PutToken', _) -> {ok, ok} end}
     ], Config),
     ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
-    PaymentParams = #{
+    PaymentParamsNoExtId = #{
         <<"paymentTool">> => #{
             <<"paymentToolType">> => <<"DigitalWalletData">>,
             <<"digitalWalletType">> => <<"DigitalWalletQIWI">>,
@@ -485,7 +485,7 @@ create_qw_payment_resource_with_access_token_depends_on_external_id(Config) ->
     PaymentParamsExtId = PaymentParams#{ <<"externalID">> => <<"ext_id">> },
     ResultExtId0  = capi_client_tokens:create_payment_resource(?config(context, Config), PaymentParamsExtId),
     ResultExtId1  = capi_client_tokens:create_payment_resource(?config(context, Config), PaymentParamsExtId),
-    ResultNoExtId = capi_client_tokens:create_payment_resource(?config(context, Config), PaymentParams),
+    ResultNoExtId = capi_client_tokens:create_payment_resource(?config(context, Config), PaymentParamsNoExtId),
     {ok, #{<<"paymentToolToken">> := TokenExtId0}}  = ResultExtId0,
     {ok, #{<<"paymentToolToken">> := TokenExtId1}}  = ResultExtId1,
     {ok, #{<<"paymentToolToken">> := TokenNoExtId}} = ResultNoExtId,
