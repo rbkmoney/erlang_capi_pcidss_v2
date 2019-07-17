@@ -193,8 +193,8 @@ create_visa_payment_resource_ok_test(Config) ->
     {ok, #{<<"paymentToolDetails">> := #{
         <<"detailsType">> := <<"PaymentToolDetailsBankCard">>,
         <<"paymentSystem">> := <<"visa">>,
-        <<"lastDigits">> := <<"1111">>,
-        <<"bin">> := <<"411111">>,
+        <<"last4">> := <<"1111">>,
+        <<"first6">> := <<"411111">>,
         <<"cardNumberMask">> := <<"411111******1111">>
     }}} = capi_client_tokens:create_payment_resource(?config(context, Config), #{
         <<"paymentTool">> => #{
@@ -232,8 +232,8 @@ create_visa_with_empty_cvv_ok_test(Config) ->
     {ok, #{<<"paymentToolDetails">> := #{
         <<"detailsType">> := <<"PaymentToolDetailsBankCard">>,
         <<"paymentSystem">> := <<"visa">>,
-        <<"lastDigits">> := <<"1111">>,
-        <<"bin">> := <<"411111">>,
+        <<"last4">>  := <<"1111">>,
+        <<"first6">> := <<"411111">>,
         <<"cardNumberMask">> := <<"411111******1111">>
     }}} = capi_client_tokens:create_payment_resource(?config(context, Config), #{
         <<"paymentTool">> => #{
@@ -282,8 +282,8 @@ create_visa_payment_resource_idemp_ok_test(Config) ->
     PaymentToolDetails = #{
         <<"detailsType">>    => <<"PaymentToolDetailsBankCard">>,
         <<"paymentSystem">>  => <<"visa">>,
-        <<"lastDigits">>     => <<"1111">>,
-        <<"bin">>            => <<"411111">>,
+        <<"last4">>          => <<"1111">>,
+        <<"first6">>         => <<"411111">>,
         <<"cardNumberMask">> => <<"411111******1111">>
     },
     {ok, #{
@@ -383,9 +383,9 @@ create_nspkmir_payment_resource_ok_test(Config) ->
     {ok, #{<<"paymentToolDetails">> := #{
         <<"detailsType">> := <<"PaymentToolDetailsBankCard">>,
         <<"paymentSystem">> := <<"nspkmir">>,
-        <<"cardNumberMask">> := <<"22001111******11">>,
-        <<"lastDigits">> := <<"11">>,
-        <<"bin">> := <<"22001111">>
+        <<"cardNumberMask">> := <<"220011******1111">>,
+        <<"last4">> := <<"1111">>,
+        <<"first6">> := <<"220011">>
     }}} = capi_client_tokens:create_payment_resource(?config(context, Config), #{
         <<"paymentTool">> => #{
             <<"paymentToolType">> => <<"CardData">>,
@@ -520,7 +520,11 @@ create_applepay_tokenized_payment_resource_ok_test(Config) ->
         {binbase, fun('Lookup', _) -> {ok, ?BINBASE_LOOKUP_RESULT} end}
     ], Config),
     ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
-    {ok, #{<<"paymentToolDetails">> := #{<<"paymentSystem">> := <<"mastercard">>}}} =
+    {ok, #{<<"paymentToolDetails">> := Details = #{
+        <<"paymentSystem">> := <<"mastercard">>,
+        <<"cardNumberMask">> := <<"************1234">>,
+        <<"last4">> := <<"1234">>
+    }}} =
         capi_client_tokens:create_payment_resource(?config(context, Config), #{
             <<"paymentTool">> => #{
                 <<"paymentToolType">> => <<"TokenizedCardData">>,
@@ -529,7 +533,8 @@ create_applepay_tokenized_payment_resource_ok_test(Config) ->
                 <<"paymentToken">> => #{}
             },
             <<"clientInfo">> => ClientInfo
-        }).
+        }),
+    false = maps:is_key(<<"first6">>, Details).
 
 -spec create_googlepay_tokenized_payment_resource_ok_test(_) ->
     _.
@@ -544,9 +549,11 @@ create_googlepay_tokenized_payment_resource_ok_test(Config) ->
         {binbase, fun('Lookup', _) -> {ok, ?BINBASE_LOOKUP_RESULT} end}
     ], Config),
     ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
-    {ok, #{<<"paymentToolDetails">> := #{
+    {ok, #{<<"paymentToolDetails">> := Details = #{
         <<"paymentSystem">> := <<"mastercard">>,
-        <<"tokenProvider">> := <<"googlepay">>
+        <<"tokenProvider">> := <<"googlepay">>,
+        <<"cardNumberMask">> := <<"************1234">>,
+        <<"last4">> := <<"1234">>
     }}} =
         capi_client_tokens:create_payment_resource(?config(context, Config), #{
             <<"paymentTool">> => #{
@@ -556,7 +563,8 @@ create_googlepay_tokenized_payment_resource_ok_test(Config) ->
                 <<"paymentToken">> => #{}
             },
             <<"clientInfo">> => ClientInfo
-        }).
+        }),
+    false = maps:is_key(<<"first6">>, Details).
 
 -spec create_googlepay_plain_payment_resource_ok_test(_) ->
     _.
@@ -583,7 +591,12 @@ create_googlepay_plain_payment_resource_ok_test(Config) ->
         }
     ], Config),
     ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
-    {ok, #{<<"paymentToolDetails">> := Details = #{<<"paymentSystem">> := <<"mastercard">>}}} =
+    {ok, #{<<"paymentToolDetails">> := Details = #{
+        <<"paymentSystem">> := <<"mastercard">>,
+        <<"cardNumberMask">> := <<"123456******3456">>,
+        <<"first6">> := <<"123456">>,
+        <<"last4">> := <<"3456">>
+    }}} =
         capi_client_tokens:create_payment_resource(?config(context, Config), #{
             <<"paymentTool">> => #{
                 <<"paymentToolType">> => <<"TokenizedCardData">>,
