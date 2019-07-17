@@ -262,12 +262,12 @@ process_digital_wallet_data(Data, IdempotentParams, Context) ->
 
 maybe_store_token_in_tds(#{<<"accessToken">> := TokenContent}, IdempotentParams, Context) ->
     #{woody_context := WoodyCtx} = Context,
-    {ExternalID, IdempotentKey}  = IdempotentParams,
+    {_ExternalID, IdempotentKey}  = IdempotentParams,
     Token         = #tds_Token{content = TokenContent},
     RandomID      = gen_random_id(),
     Hash          = undefined,
     {ok, TokenID} = capi_bender:gen_by_constant(IdempotentKey, RandomID, Hash, WoodyCtx),
-    Call          = {tds_storage, 'PutToken', [TokenId, Token]},
+    Call          = {tds_storage, 'PutToken', [TokenID, Token]},
     {ok, ok}      = capi_handler_utils:service_call(Call, Context),
     TokenID;
 maybe_store_token_in_tds(_, _IdempotentParams, _Context) ->
