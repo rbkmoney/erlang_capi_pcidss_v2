@@ -482,7 +482,7 @@ create_qw_payment_resource_with_access_token_depends_on_external_id(Config) ->
         },
         <<"clientInfo">> => ClientInfo
     },
-    PaymentParamsExtId = PaymentParams#{ <<"externalID">> => <<"ext_id">> },
+    PaymentParamsExtId = PaymentParamsNoExtId#{ <<"externalID">> => <<"ext_id">> },
     ResultExtId0  = capi_client_tokens:create_payment_resource(?config(context, Config), PaymentParamsExtId),
     ResultExtId1  = capi_client_tokens:create_payment_resource(?config(context, Config), PaymentParamsExtId),
     ResultNoExtId = capi_client_tokens:create_payment_resource(?config(context, Config), PaymentParamsNoExtId),
