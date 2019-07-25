@@ -169,10 +169,10 @@ process_general_error(Class, Reason, Stacktrace, OperationID, Req, SwagContext) 
     _ = logger:error(
         "Operation ~p failed due to ~p:~p given req: ~p and context: ~p",
         [OperationID, Class, Reason, Req, SwagContext],
-        [{error, [
-            {class, genlib:to_binary(Class)},
-            {reason, genlib:format(Reason)},
-            {stack_trace, genlib_format:format_stacktrace(Stacktrace)}
-        ]}]
+        #{error => #{
+            class       => genlib:to_binary(Class),
+            reason      => genlib:format(Reason),
+            stack_trace => genlib_format:format_stacktrace(Stacktrace)
+        }}
     ),
     {error, server_error(500)}.
