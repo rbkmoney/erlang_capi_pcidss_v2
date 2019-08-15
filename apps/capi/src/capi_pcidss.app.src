@@ -11,6 +11,7 @@
         binbase_proto,
         tds_proto,
         dmsl,
+        moneypenny,
         snowflake,
         rfc3339,
         base64url,
