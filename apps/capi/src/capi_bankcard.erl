@@ -123,11 +123,9 @@ decode_payment_system(PaymentSystem) ->
 
 decode_issuer_country(Residence) when is_binary(Residence) ->
     try
-        erlang:list_to_existing_atom(
-            string:to_lower(
-                erlang:binary_to_list(Residence)
-            )
-        )
+        {enum, Variants} = dmsl_domain_thrift:enum_info('Residence'),
+        Variant = erlang:list_to_existing_atom(string:to_lower(erlang:binary_to_list(Residence))),
+        element(1, lists:keyfind(Variant, 1, Variants))
     catch
         error:badarg ->
             _ = logger:warning("unknown residence encountered: ~s", [Residence]),
