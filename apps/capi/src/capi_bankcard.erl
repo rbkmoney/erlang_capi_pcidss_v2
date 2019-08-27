@@ -32,14 +32,14 @@ lookup_bank_info(PAN, WoodyCtx) ->
 
 decode_bank_info(#'binbase_ResponseData'{bin_data = BinData, version = Version}) ->
     try
-        #{
+        {ok, #{
             payment_system => decode_payment_system(BinData#binbase_BinData.payment_system),
             bank_name      => BinData#binbase_BinData.bank_name,
             issuer_country => decode_issuer_country(BinData#binbase_BinData.iso_country_code),
             metadata       => #{
                 <<"version">> => Version
             }
-        }
+        }}
     catch
         {invalid, What} ->
             {error, {invalid, What}}
