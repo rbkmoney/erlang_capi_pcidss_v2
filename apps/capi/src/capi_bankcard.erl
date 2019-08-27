@@ -112,7 +112,9 @@ decode_payment_system(<<"UNIONPAY">>)                   -> unionpay;
 decode_payment_system(<<"VISA">>)                       -> visa;
 decode_payment_system(<<"VISA/DANKORT">>)               -> visa; % supposedly 🤔
 decode_payment_system(<<"VPAY">>)                       -> ?invalid(payment_system);
-decode_payment_system(_)                                -> ?invalid(payment_system).
+decode_payment_system(PaymentSystem) ->
+    _ = logger:warning("unknown payment system encountered: ~s", [PaymentSystem]),
+    ?invalid(payment_system).
 
 %% Residence mapping
 %%
@@ -126,6 +128,7 @@ decode_issuer_country(Residence) when is_binary(Residence) ->
         element(1, lists:keyfind(Variant, 1, Variants))
     catch
         error:badarg ->
+            _ = logger:warning("unknown residence encountered: ~s", [Residence]),
             ?invalid(issuer_country)
     end;
 decode_issuer_country(undefined) ->
