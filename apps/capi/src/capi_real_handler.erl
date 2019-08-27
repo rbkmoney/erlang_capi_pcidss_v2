@@ -10,8 +10,6 @@
 -include_lib("dmsl/include/dmsl_reporting_thrift.hrl").
 -include_lib("dmsl/include/dmsl_payment_tool_provider_thrift.hrl").
 
--include_lib("binbase_proto/include/binbase_binbase_thrift.hrl").
-
 -behaviour(swag_server_logic_handler).
 
 %% API callbacks
@@ -237,16 +235,6 @@ encode_content(json, Data) ->
         data = jsx:encode(Data)
     }.
 
-encode_residence(undefined) ->
-    undefined;
-encode_residence(Residence) when is_binary(Residence) ->
-    try
-        list_to_existing_atom(string:to_lower(binary_to_list(Residence)))
-    catch
-        error:badarg ->
-            throw({encode_residence, invalid_residence})
-    end.
-
 decode_payment_tool_token({bank_card, BankCard}) ->
     decode_bank_card(BankCard);
 decode_payment_tool_token({payment_terminal, PaymentTerminal}) ->
@@ -340,15 +328,16 @@ process_card_data(Data, IdempotentKey, ReqCtx) ->
     put_card_data_to_cds(CardData, SessionData, IdempotentKey, ReqCtx).
 
 put_card_to_cds(CardData, ReqCtx) ->
-    BinData = lookup_bank_info(CardData#'CardData'.pan, ReqCtx),
-    case service_call(cds_storage, 'PutCard', [CardData], ReqCtx) of
-        {ok, #'PutCardResult'{bank_card = BankCard}} ->
-            {bank_card, expand_card_info(
-                BankCard,
-                BinData
-            )};
-        {exception, #'InvalidCardData'{}} ->
-            throw({ok, {400, #{}, logic_error(invalidRequest, <<"Card data is invalid">>)}})
+    case capi_bankcard:lookup_bank_info(CardData#'CardData'.pan, ReqCtx) of
+        {ok, BankInfo} ->
+            case service_call(cds_storage, 'PutCard', [CardData], ReqCtx) of
+                {ok, #'PutCardResult'{bank_card = BankCard}} ->
+                    {bank_card, expand_card_info(BankCard, BankInfo)};
+                {exception, #'InvalidCardData'{}} ->
+                    throw({ok, {400, #{}, logic_error(invalidRequest, <<"Card data is invalid">>)}})
+            end;
+        {error, _Reason} ->
+            throw({ok, {400, #{}, logic_error(invalidRequest, <<"Unsupported card">>)}})
     end.
 
 put_session_to_cds(SessionID, SessionData, ReqCtx) ->
@@ -364,52 +353,20 @@ put_card_data_to_cds(CardData, SessionData, IdempotentKey, ReqCtx) ->
     ok = put_session_to_cds(SessionID, SessionData, ReqCtx),
     {BankCard, SessionID}.
 
-lookup_bank_info(Pan, ReqCtx) ->
-    RequestVersion = {'last', #binbase_Last{}},
-    case service_call(binbase, 'Lookup', [Pan, RequestVersion], ReqCtx) of
-        {ok, #'binbase_ResponseData'{bin_data = BinData, version = Version}} ->
-            {BinData, Version};
-        {exception, #'binbase_BinNotFound'{}} ->
-            throw({ok, {400, #{}, logic_error(invalidRequest, <<"Card data is invalid">>)}})
-    end.
-
-expand_card_info(BankCard, {BinData, Version}) ->
-    try
-        BankCard#'domain_BankCard'{
-            payment_system = encode_binbase_payment_system(BinData#'binbase_BinData'.payment_system),
-            issuer_country = encode_residence(BinData#'binbase_BinData'.iso_country_code),
-            bank_name = BinData#'binbase_BinData'.bank_name,
-            metadata = #{
-                ?CAPI_NS =>
-                    {obj, #{
-                        {str, <<"version">>} => {i, Version}
-                    }
-                }
-            }
+expand_card_info(BankCard, #{
+    payment_system  := PaymentSystem,
+    bank_name       := BankName,
+    issuer_country  := IssuerCountry,
+    metadata        := Metadata
+}) ->
+    BankCard#'domain_BankCard'{
+        payment_system = PaymentSystem,
+        issuer_country = IssuerCountry,
+        bank_name = BankName,
+        metadata = #{
+            ?CAPI_NS => capi_msgp_marshalling:marshal(Metadata)
         }
-    catch
-        throw:{encode_binbase_payment_system, invalid_payment_system} ->
-            throw({ok, {400, #{}, logic_error(invalidRequest, <<"Unsupported card">>)}});
-        throw:{encode_residence, invalid_residence} ->
-            throw({ok, {400, #{}, logic_error(invalidRequest, <<"Unsupported card">>)}})
-    end.
-
-encode_binbase_payment_system(<<"VISA">>)                      -> visa;
-encode_binbase_payment_system(<<"VISA/DANKORT">>)              -> visa;         % supposedly 🤔
-encode_binbase_payment_system(<<"MASTERCARD">>)                -> mastercard;
-% encode_binbase_payment_system(<<"???">>)                       -> visaelectron;
-encode_binbase_payment_system(<<"MAESTRO">>)                   -> maestro;
-% encode_binbase_payment_system(<<"???">>)                       -> forbrugsforeningen;
-encode_binbase_payment_system(<<"DANKORT">>)                   -> dankort;
-encode_binbase_payment_system(<<"AMERICAN EXPRESS">>)          -> amex;
-encode_binbase_payment_system(<<"DINERS CLUB INTERNATIONAL">>) -> dinersclub;
-encode_binbase_payment_system(<<"DISCOVER">>)                  -> discover;
-encode_binbase_payment_system(<<"UNIONPAY">>)                  -> unionpay;
-encode_binbase_payment_system(<<"CHINA UNION PAY">>)           -> unionpay;
-encode_binbase_payment_system(<<"JCB">>)                       -> jcb;
-encode_binbase_payment_system(<<"NSPK MIR">>)                  -> nspkmir;
-encode_binbase_payment_system(_) ->
-    throw({encode_binbase_payment_system, invalid_payment_system}).
+    }.
 
 encode_card_data(CardData) ->
     {Month, Year} = parse_exp_date(genlib_map:get(<<"expDate">>, CardData)),
