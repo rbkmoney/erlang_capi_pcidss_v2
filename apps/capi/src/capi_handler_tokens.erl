@@ -430,10 +430,13 @@ get_mobile_operator(MobilePhone, Context) ->
     end.
 
 encode_phone_number(#{<<"cc">> := Cc, <<"ctn">> := Ctn}) ->
-    #mnp_PhoneNumber{
-        cc = Cc,
-        ctn = Ctn
+    #mnp_RequestParams{
+        phone = #mnp_PhoneNumber{
+            cc = Cc,
+            ctn = Ctn
+        }
     }.
+
 
 encode_mobile_commerce(MobilePhone, Operator) ->
     #{<<"cc">> := Cc, <<"ctn">> := Ctn} = MobilePhone,
