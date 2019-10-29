@@ -5,7 +5,7 @@
 -define(BANK_CARD, #cds_BankCard{
     token = ?STRING,
     bin = <<"411111">>,
-    last_digits = <<"411111******1111">>
+    last_digits = <<"1111">>
 }).
 
 -define(BINBASE_LOOKUP_RESULT, ?BINBASE_LOOKUP_RESULT(<<"MASTERCARD">>)).
