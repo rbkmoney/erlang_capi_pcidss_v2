@@ -24,7 +24,8 @@
         cowboy_cors,
         cowboy_access_log,
         erl_health,
-        uac
+        uac,
+        cds_proto
     ]},
     {env, []}
 ]}.
