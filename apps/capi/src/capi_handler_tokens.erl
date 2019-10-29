@@ -1,7 +1,7 @@
 -module(capi_handler_tokens).
 
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
--include_lib("damsel/include/dmsl_cds_thrift.hrl").
+-include_lib("cds_proto/include/cds_proto_storage_thrift.hrl").
 -include_lib("tds_proto/include/tds_proto_storage_thrift.hrl").
 -include_lib("damsel/include/dmsl_payment_tool_provider_thrift.hrl").
 -include_lib("moneypenny/include/moneypenny_mnp_thrift.hrl").
@@ -97,7 +97,7 @@ process_card_data(Data, IdempotentParams, Context) ->
 
 process_card_data_result(
     {{bank_card, BankCard}, SessionID},
-    #'CardData'{
+    #cds_CardData{
         pan  = CardNumber
     }
 ) ->
@@ -110,25 +110,24 @@ process_card_data_result(
     }.
 
 encode_session_data(CardData) ->
-    #'SessionData'{
-        auth_data = {card_security_code, #'CardSecurityCode'{
+    #cds_SessionData{
+        auth_data = {card_security_code, #cds_CardSecurityCode{
             % dirty hack for cds support empty cvv bank cards
             value = maps:get(<<"cvv">>, CardData, <<"">>)
         }}
     }.
 
 encode_card_data(CardData) ->
-    {Month, Year} = parse_exp_date(genlib_map:get(<<"expDate">>, CardData)),
+    ExpDate = parse_exp_date(genlib_map:get(<<"expDate">>, CardData)),
     CardNumber = genlib:to_binary(genlib_map:get(<<"cardNumber">>, CardData)),
-    #'CardData'{
+    #cds_CardData{
         pan  = CardNumber,
-        exp_date = #'ExpDate'{
-            month = Month,
-            year = Year
-        },
+        exp_date = ExpDate,
         cardholder_name = genlib_map:get(<<"cardHolder">>, CardData)
     }.
 
+parse_exp_date(undefined) ->
+    undefined;
 parse_exp_date(ExpDate) when is_binary(ExpDate) ->
     [Month, Year0] = binary:split(ExpDate, <<"/">>),
     Year = case genlib:to_int(Year0) of
@@ -137,7 +136,10 @@ parse_exp_date(ExpDate) when is_binary(ExpDate) ->
         Y ->
             Y
     end,
-    {genlib:to_int(Month), Year}.
+    #cds_ExpDate{
+        month = genlib:to_int(Month),
+        year = Year
+    }.
 
 put_card_data_to_cds(CardData, SessionData, {ExternalID, IdempotentKey}, Context) ->
     #{woody_context := WoodyCtx} = Context,
@@ -154,13 +156,13 @@ put_card_data_to_cds(CardData, SessionData, {ExternalID, IdempotentKey}, Context
     end.
 
 put_card_to_cds(CardData, SessionData, Context) ->
-    case capi_bankcard:lookup_bank_info(CardData#'CardData'.pan, Context) of
+    case capi_bankcard:lookup_bank_info(CardData#cds_CardData.pan, Context) of
         {ok, BankInfo} ->
             Call = {cds_storage, 'PutCard', [CardData]},
             case capi_handler_utils:service_call(Call, Context) of
-                {ok, #'PutCardResult'{bank_card = BankCard}} ->
+                {ok, #cds_PutCardResult{bank_card = BankCard}} ->
                     {bank_card, expand_card_info(BankCard, BankInfo, undef_cvv(SessionData))};
-                {exception, #'InvalidCardData'{}} ->
+                {exception, #cds_InvalidCardData{}} ->
                     throw({ok, logic_error(invalidRequest, <<"Card data is invalid">>)})
             end;
         {error, _Reason} ->
@@ -173,7 +175,10 @@ expand_card_info(BankCard, #{
     issuer_country  := IssuerCountry,
     metadata        := Metadata
 }, HaveCVV) ->
-    BankCard#'domain_BankCard'{
+    #'domain_BankCard'{
+        token           = BankCard#cds_BankCard.token,
+        bin             = BankCard#cds_BankCard.bin,
+        masked_pan      = BankCard#cds_BankCard.last_digits,
         payment_system  = PaymentSystem,
         issuer_country  = IssuerCountry,
         bank_name       = BankName,
@@ -187,19 +192,19 @@ get_first6(CardNumber) ->
 get_last4(CardNumber) ->
     binary:part(CardNumber, {byte_size(CardNumber), -4}).
 
-undef_cvv(#'SessionData'{
-        auth_data = {card_security_code, #'CardSecurityCode'{
+undef_cvv(#cds_SessionData{
+        auth_data = {card_security_code, #cds_CardSecurityCode{
             value = <<"">>
         }}
     }) ->
     true;
-undef_cvv(#'SessionData'{
-        auth_data = {card_security_code, #'CardSecurityCode'{
+undef_cvv(#cds_SessionData{
+        auth_data = {card_security_code, #cds_CardSecurityCode{
             value = _Value
         }}
     }) ->
     false;
-undef_cvv(#'SessionData'{}) ->
+undef_cvv(#cds_SessionData{}) ->
     undefined.
 
 gen_random_id() ->
@@ -350,9 +355,9 @@ encode_tokenized_card_data(#paytoolprv_UnwrappedPaymentTool{
         cardholder_name = CardholderName
     }
 }) ->
-    #'CardData'{
+    #cds_CardData{
         pan  = DPAN,
-        exp_date = #'ExpDate'{
+        exp_date = #cds_ExpDate{
             month = Month,
             year = Year
         },
@@ -370,9 +375,9 @@ encode_tokenized_card_data(#paytoolprv_UnwrappedPaymentTool{
         cardholder_name = CardholderName
     }
 }) ->
-    #'CardData'{
+    #cds_CardData{
         pan  = PAN,
-        exp_date = #'ExpDate'{
+        exp_date = #cds_ExpDate{
             month = Month,
             year = Year
         },
@@ -387,8 +392,8 @@ encode_tokenized_session_data(#paytoolprv_UnwrappedPaymentTool{
         }}
     }}
 }) ->
-    #'SessionData'{
-        auth_data = {auth_3ds, #'Auth3DS'{
+    #cds_SessionData{
+        auth_data = {auth_3ds, #cds_Auth3DS{
             cryptogram = Cryptogram,
             eci = ECI
         }}
@@ -396,8 +401,8 @@ encode_tokenized_session_data(#paytoolprv_UnwrappedPaymentTool{
 encode_tokenized_session_data(#paytoolprv_UnwrappedPaymentTool{
     payment_data = {card, #paytoolprv_Card{}}
 }) ->
-    #'SessionData'{
-        auth_data = {card_security_code, #'CardSecurityCode'{
+    #cds_SessionData{
+        auth_data = {card_security_code, #cds_CardSecurityCode{
             %% TODO dirty hack for test GooglePay card data
             value = <<"">>
         }}
