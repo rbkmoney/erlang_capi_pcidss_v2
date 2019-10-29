@@ -2,7 +2,7 @@
 
 -include_lib("dmsl/include/dmsl_payment_processing_thrift.hrl").
 -include_lib("dmsl/include/dmsl_domain_thrift.hrl").
--include_lib("dmsl/include/dmsl_cds_thrift.hrl").
+-include_lib("cds_proto/include/cds_proto_storage_thrift.hrl").
 -include_lib("dmsl/include/dmsl_merch_stat_thrift.hrl").
 -include_lib("dmsl/include/dmsl_webhooker_thrift.hrl").
 -include_lib("dmsl/include/dmsl_user_interaction_thrift.hrl").
@@ -147,6 +147,8 @@ logic_error(Code, Message) ->
 general_error(Message) ->
     #{<<"message">> => genlib:to_binary(Message)}.
 
+parse_exp_date(undefined) ->
+    undefined;
 parse_exp_date(ExpDate) when is_binary(ExpDate) ->
     [Month, Year0] = binary:split(ExpDate, <<"/">>),
     Year = case genlib:to_int(Year0) of
@@ -155,7 +157,10 @@ parse_exp_date(ExpDate) when is_binary(ExpDate) ->
         Y ->
             Y
     end,
-    {genlib:to_int(Month), Year}.
+    #cds_ExpDate{
+        month = genlib:to_int(Month),
+        year = Year
+    }.
 
 get_auth_context(#{auth_context := AuthContext}) ->
     AuthContext.
@@ -328,12 +333,12 @@ process_card_data(Data, IdempotentKey, ReqCtx) ->
     put_card_data_to_cds(CardData, SessionData, IdempotentKey, ReqCtx).
 
 put_card_to_cds(CardData, ReqCtx) ->
-    case capi_bankcard:lookup_bank_info(CardData#'CardData'.pan, ReqCtx) of
+    case capi_bankcard:lookup_bank_info(CardData#cds_CardData.pan, ReqCtx) of
         {ok, BankInfo} ->
             case service_call(cds_storage, 'PutCard', [CardData], ReqCtx) of
-                {ok, #'PutCardResult'{bank_card = BankCard}} ->
+                {ok, #cds_PutCardResult{bank_card = BankCard}} ->
                     {bank_card, expand_card_info(BankCard, BankInfo)};
-                {exception, #'InvalidCardData'{}} ->
+                {exception, #cds_InvalidCardData{}} ->
                     throw({ok, {400, #{}, logic_error(invalidRequest, <<"Card data is invalid">>)}})
             end;
         {error, _Reason} ->
@@ -359,7 +364,10 @@ expand_card_info(BankCard, #{
     issuer_country  := IssuerCountry,
     metadata        := Metadata
 }) ->
-    BankCard#'domain_BankCard'{
+    #'domain_BankCard'{
+        token = BankCard#cds_BankCard.token,
+        bin = BankCard#cds_BankCard.bin,
+        masked_pan = BankCard#cds_BankCard.last_digits,
         payment_system = PaymentSystem,
         issuer_country = IssuerCountry,
         bank_name = BankName,
@@ -369,20 +377,17 @@ expand_card_info(BankCard, #{
     }.
 
 encode_card_data(CardData) ->
-    {Month, Year} = parse_exp_date(genlib_map:get(<<"expDate">>, CardData)),
+    ExpDate = parse_exp_date(genlib_map:get(<<"expDate">>, CardData)),
     CardNumber = genlib:to_binary(genlib_map:get(<<"cardNumber">>, CardData)),
-    #'CardData'{
+    #cds_CardData{
         pan  = CardNumber,
-        exp_date = #'ExpDate'{
-            month = Month,
-            year = Year
-        },
+        exp_date = ExpDate,
         cardholder_name = genlib_map:get(<<"cardHolder">>, CardData)
     }.
 
 encode_session_data(CardData) ->
-    #'SessionData'{
-        auth_data = {card_security_code, #'CardSecurityCode'{
+    #cds_SessionData{
+        auth_data = {card_security_code, #cds_CardSecurityCode{
             value = genlib_map:get(<<"cvv">>, CardData)
         }}
     }.
@@ -441,8 +446,8 @@ encode_tokenized_session_data(#paytoolprv_UnwrappedPaymentTool{
         }}
     }}
 }) ->
-    #'SessionData'{
-        auth_data = {auth_3ds, #'Auth3DS'{
+    #cds_SessionData{
+        auth_data = {auth_3ds, #cds_Auth3DS{
             cryptogram = Cryptogram,
             eci = ECI
         }}
@@ -450,8 +455,8 @@ encode_tokenized_session_data(#paytoolprv_UnwrappedPaymentTool{
 encode_tokenized_session_data(#paytoolprv_UnwrappedPaymentTool{
     payment_data = {card, #paytoolprv_Card{}}
 }) ->
-    #'SessionData'{
-        auth_data = {card_security_code, #'CardSecurityCode'{
+    #cds_SessionData{
+        auth_data = {card_security_code, #cds_CardSecurityCode{
             %% TODO dirty hack for test GooglePay card data
             value = <<"">>
         }}
@@ -469,9 +474,9 @@ encode_tokenized_card_data(#paytoolprv_UnwrappedPaymentTool{
         cardholder_name = CardholderName
     }
 }) ->
-    #'CardData'{
+    #cds_CardData{
         pan  = DPAN,
-        exp_date = #'ExpDate'{
+        exp_date = #cds_ExpDate{
             month = Month,
             year = Year
         },
@@ -489,9 +494,9 @@ encode_tokenized_card_data(#paytoolprv_UnwrappedPaymentTool{
         cardholder_name = CardholderName
     }
 }) ->
-    #'CardData'{
+    #cds_CardData{
         pan  = PAN,
-        exp_date = #'ExpDate'{
+        exp_date = #cds_ExpDate{
             month = Month,
             year = Year
         },

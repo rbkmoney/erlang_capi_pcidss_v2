@@ -21,7 +21,8 @@
         payproc_errors,
         erl_health,
         uac,
-        scoper
+        scoper,
+        cds_proto
     ]},
     {env, []}
 ]}.

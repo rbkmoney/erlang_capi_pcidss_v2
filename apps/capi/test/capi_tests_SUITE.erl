@@ -4,7 +4,7 @@
 
 -include_lib("dmsl/include/dmsl_payment_processing_thrift.hrl").
 -include_lib("dmsl/include/dmsl_accounter_thrift.hrl").
--include_lib("dmsl/include/dmsl_cds_thrift.hrl").
+-include_lib("cds_proto/include/cds_proto_storage_thrift.hrl").
 -include_lib("dmsl/include/dmsl_domain_config_thrift.hrl").
 -include_lib("dmsl/include/dmsl_webhooker_thrift.hrl").
 -include_lib("dmsl/include/dmsl_merch_stat_thrift.hrl").
@@ -137,14 +137,13 @@ create_visa_payment_resource_ok_test(Config) ->
         {cds_storage, fun
             ('PutSession', _) -> {ok, ok};
             ('PutCard', [
-                #'CardData'{pan = <<"411111", _:6/binary, Mask:4/binary>>}
+                #'cds_CardData'{pan = <<"411111", _:6/binary, Mask:4/binary>>}
             ]) ->
-                {ok, #'PutCardResult'{
-                    bank_card = #domain_BankCard{
+                {ok, #'cds_PutCardResult'{
+                    bank_card = #cds_BankCard{
                         token = ?STRING,
-                        payment_system = visa,
                         bin = <<"411111">>,
-                        masked_pan = Mask
+                        last_digits = Mask
                     }
                 }}
         end},
@@ -176,14 +175,13 @@ create_nspkmir_payment_resource_ok_test(Config) ->
         {cds_storage, fun
             ('PutSession', _) -> {ok, ok};
             ('PutCard', [
-                #'CardData'{pan = <<"22001111", _:6/binary, Mask:2/binary>>}
+                #'cds_CardData'{pan = <<"22001111", _:6/binary, Mask:2/binary>>}
             ]) ->
-                {ok, #'PutCardResult'{
-                    bank_card = #domain_BankCard{
+                {ok, #'cds_PutCardResult'{
+                    bank_card = #cds_BankCard{
                         token = ?STRING,
-                        payment_system = nspkmir,
                         bin = <<"22001111">>,
-                        masked_pan = Mask
+                        last_digits = Mask
                     }
                 }}
         end},
