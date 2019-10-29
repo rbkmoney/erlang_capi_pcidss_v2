@@ -101,31 +101,30 @@ end_per_testcase(_Name, C) ->
     _.
 
 oops_body_test(Config) ->
-%%    capi_ct_helper:mock_services([
-%%        {cds_storage, fun
-%%            ('PutSession', _) -> {ok, ok};
-%%            ('PutCard', _) -> {ok, <<"whoa">>}
-%%        end},
-%%        {bender,  fun('GenerateID', _) -> {ok, capi_ct_helper_bender:get_result(<<"bender key">>)} end},
-%%        {binbase, fun('Lookup', _) -> {ok, <<"totally legit bank card">>} end}
-%%    ], Config),
-%%    Context = ?config(context, Config),
-%%    Token = maps:get(token, Context),
-%%    {ok, 500, _, OopsBody} = hackney:request(
-%%        post,
-%%        "localhost:8080/v2/processing/payment-resources",
-%%        [
-%%            {<<"Authorization">>, <<<<"Bearer ">>/binary, Token/binary>>},
-%%            {<<"Content-Type">>, <<"application/json; charset=UTF-8">>},
-%%            {<<"X-Request-ID">>, list_to_binary(integer_to_list(rand:uniform(100000)))}
-%%        ],
-%%        <<"{\"paymentTool\":
-%%                {\"paymentToolType\":\"CardData\",\"cardNumber\":\"4242424242424242\",\"expDate\":\"12/20\"},
-%%            \"clientInfo\":
-%%                {\"fingerprint\":\"test\"}}">>,
-%%        [
-%%            with_body
-%%        ]
-%%    ),
-%%    {ok, OopsBody} = file:read_file(?OOPS_BODY).
-Config.
+    capi_ct_helper:mock_services([
+        {cds_storage, fun
+            ('PutSession', _) -> {ok, ok};
+            ('PutCard', _) -> {ok, <<"whoa">>}
+        end},
+        {bender,  fun('GenerateID', _) -> {ok, capi_ct_helper_bender:get_result(<<"bender key">>)} end},
+        {binbase, fun('Lookup', _) -> {ok, <<"totally legit bank card">>} end}
+    ], Config),
+    Context = ?config(context, Config),
+    Token = maps:get(token, Context),
+    {ok, 500, _, OopsBody} = hackney:request(
+        post,
+        "localhost:8080/v2/processing/payment-resources",
+        [
+            {<<"Authorization">>, <<<<"Bearer ">>/binary, Token/binary>>},
+            {<<"Content-Type">>, <<"application/json; charset=UTF-8">>},
+            {<<"X-Request-ID">>, list_to_binary(integer_to_list(rand:uniform(100000)))}
+        ],
+        <<"{\"paymentTool\":
+                {\"paymentToolType\":\"CardData\",\"cardNumber\":\"4242424242424242\",\"expDate\":\"12/20\"},
+            \"clientInfo\":
+                {\"fingerprint\":\"test\"}}">>,
+        [
+            with_body
+        ]
+    ),
+    {ok, OopsBody} = file:read_file(?OOPS_BODY).
