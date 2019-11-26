@@ -348,6 +348,7 @@ start_capi(Config) ->
         {ip, ?CAPI_IP},
         {port, ?CAPI_PORT},
         {service_type, real},
+        {secret_path, get_keysource("keys/local/secret.key", Config)},
         {access_conf, #{
             jwt => #{
                 keyset => #{

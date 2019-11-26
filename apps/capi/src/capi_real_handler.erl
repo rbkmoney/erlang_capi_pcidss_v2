@@ -364,8 +364,9 @@ expand_card_info(BankCard, #{
     issuer_country  := IssuerCountry,
     metadata        := Metadata
 }) ->
+    Token = capi_crypto:encrypt(BankCard#cds_BankCard.token),
     #'domain_BankCard'{
-        token = BankCard#cds_BankCard.token,
+        token = Token,
         bin = BankCard#cds_BankCard.bin,
         masked_pan = BankCard#cds_BankCard.last_digits,
         payment_system = PaymentSystem,
