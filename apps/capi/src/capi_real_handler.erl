@@ -328,16 +328,19 @@ prepare_client_ip(Context) ->
     genlib:to_binary(inet:ntoa(IP)).
 
 process_card_data(Data, IdempotentKey, ReqCtx) ->
-    CardData = encode_card_data(Data),
+    PutCardData = encode_card_data(Data),
     SessionData = encode_session_data(Data),
-    put_card_data_to_cds(CardData, SessionData, IdempotentKey, ReqCtx).
+    put_card_data_to_cds(PutCardData, SessionData, IdempotentKey, ReqCtx).
 
-put_card_to_cds(CardData, ReqCtx) ->
-    case capi_bankcard:lookup_bank_info(CardData#cds_CardData.pan, ReqCtx) of
+put_card_to_cds(PutCardData, ReqCtx) ->
+    case capi_bankcard:lookup_bank_info(PutCardData#cds_PutCardData.pan, ReqCtx) of
         {ok, BankInfo} ->
-            case service_call(cds_storage, 'PutCard', [CardData], ReqCtx) of
+            case service_call(cds_storage, 'PutCard', [PutCardData], ReqCtx) of
                 {ok, #cds_PutCardResult{bank_card = BankCard}} ->
-                    {bank_card, expand_card_info(BankCard, BankInfo)};
+                    ExpDate = PutCardData#cds_PutCardData.exp_date,
+                    CardholderName = PutCardData#cds_PutCardData.cardholder_name,
+                    TokenEncrypt = encrypt_token(BankCard, ExpDate, CardholderName),
+                    {bank_card, expand_card_info(TokenEncrypt, BankCard, BankInfo)};
                 {exception, #cds_InvalidCardData{}} ->
                     throw({ok, {400, #{}, logic_error(invalidRequest, <<"Card data is invalid">>)}})
             end;
@@ -349,8 +352,8 @@ put_session_to_cds(SessionID, SessionData, ReqCtx) ->
     {ok, ok} = service_call(cds_storage, 'PutSession', [SessionID, SessionData], ReqCtx),
     ok.
 
-put_card_data_to_cds(CardData, SessionData, IdempotentKey, ReqCtx) ->
-    BankCard = put_card_to_cds(CardData, ReqCtx),
+put_card_data_to_cds(PutCardData, SessionData, IdempotentKey, ReqCtx) ->
+    BankCard = put_card_to_cds(PutCardData, ReqCtx),
     {bank_card, #domain_BankCard{token = Token}} = BankCard,
     RandomID = gen_random_id(),
     Hash = erlang:phash2(Token),
@@ -358,15 +361,14 @@ put_card_data_to_cds(CardData, SessionData, IdempotentKey, ReqCtx) ->
     ok = put_session_to_cds(SessionID, SessionData, ReqCtx),
     {BankCard, SessionID}.
 
-expand_card_info(BankCard, #{
+expand_card_info(TokenEncrypt, BankCard, #{
     payment_system  := PaymentSystem,
     bank_name       := BankName,
     issuer_country  := IssuerCountry,
     metadata        := Metadata
 }) ->
-    Token = capi_crypto:encrypt(BankCard#cds_BankCard.token),
     #'domain_BankCard'{
-        token = Token,
+        token = TokenEncrypt,
         bin = BankCard#cds_BankCard.bin,
         masked_pan = BankCard#cds_BankCard.last_digits,
         payment_system = PaymentSystem,
@@ -377,10 +379,23 @@ expand_card_info(BankCard, #{
         }
     }.
 
+encrypt_token(BankCard, ExpDate, CardholderName) ->
+    Token = BankCard#cds_BankCard.token,
+    Payload = encode_token_payload(ExpDate, CardholderName),
+    BankCardToken = encode_token_with_payload(Token, Payload),
+    capi_crypto:encrypt(BankCardToken).
+
+encode_token_payload(ExpDate, CardholderName) ->
+    #cds_ExpDate{month = Month, year = Year} = ExpDate,
+    <<Month:8, Year:16, CardholderName/binary>>.
+
+encode_token_with_payload(Token, Payload) ->
+    <<Token/binary, ".", Payload/binary>>.
+
 encode_card_data(CardData) ->
     ExpDate = parse_exp_date(genlib_map:get(<<"expDate">>, CardData)),
     CardNumber = genlib:to_binary(genlib_map:get(<<"cardNumber">>, CardData)),
-    #cds_CardData{
+    #cds_PutCardData{
         pan  = CardNumber,
         exp_date = ExpDate,
         cardholder_name = genlib_map:get(<<"cardHolder">>, CardData)
@@ -475,7 +490,7 @@ encode_tokenized_card_data(#paytoolprv_UnwrappedPaymentTool{
         cardholder_name = CardholderName
     }
 }) ->
-    #cds_CardData{
+    #cds_PutCardData{
         pan  = DPAN,
         exp_date = #cds_ExpDate{
             month = Month,
@@ -495,7 +510,7 @@ encode_tokenized_card_data(#paytoolprv_UnwrappedPaymentTool{
         cardholder_name = CardholderName
     }
 }) ->
-    #cds_CardData{
+    #cds_PutCardData{
         pan  = PAN,
         exp_date = #cds_ExpDate{
             month = Month,

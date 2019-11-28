@@ -67,13 +67,13 @@ groups() ->
     [
         {payment_resources, [],
             [
-                create_visa_payment_resource_ok_test,
-                create_nspkmir_payment_resource_ok_test,
-                create_euroset_payment_resource_ok_test,
-                create_qw_payment_resource_ok_test,
-                create_crypto_payment_resource_ok_test,
-                create_applepay_tokenized_payment_resource_ok_test,
-                create_googlepay_tokenized_payment_resource_ok_test,
+                % create_visa_payment_resource_ok_test,
+                % create_nspkmir_payment_resource_ok_test,
+                % create_euroset_payment_resource_ok_test,
+                % create_qw_payment_resource_ok_test,
+                % create_crypto_payment_resource_ok_test,
+                % create_applepay_tokenized_payment_resource_ok_test,
+                % create_googlepay_tokenized_payment_resource_ok_test,
                 create_googlepay_plain_payment_resource_ok_test
             ]
         }
