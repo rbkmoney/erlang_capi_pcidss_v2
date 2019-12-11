@@ -194,30 +194,31 @@ decode_payment_tool_token({bank_card, BankCard}) ->
     PaymentToolToken = {bank_card_payload, #ptt_BankCardPayload{
         bank_card = BankCard
     }},
-    ThriftType = {struct, union, {dmsl_payment_tool_token_thrift, 'PaymentToolToken'}},
-    {ok, EncodedToken} = lechiffre:encode(ThriftType, PaymentToolToken),
-    base64url:encode(<<"v1", EncodedToken/binary>>);
+    encode_payment_tool_token(PaymentToolToken);
 decode_payment_tool_token({payment_terminal, PaymentTerminal}) ->
     PaymentToolToken = {payment_terminal_payload, #ptt_PaymentTerminalPayload{
         payment_terminal = PaymentTerminal
     }},
-    ThriftType = {struct, union, {dmsl_payment_tool_token_thrift, 'PaymentToolToken'}},
-    {ok, EncodedToken} = lechiffre:encode(ThriftType, PaymentToolToken),
-    base64url:encode(<<"v1", EncodedToken/binary>>);
+    encode_payment_tool_token(PaymentToolToken);
 decode_payment_tool_token({digital_wallet, DigitalWallet}) ->
     PaymentToolToken = {digital_wallet_payload, #ptt_DigitalWalletPayload{
         digital_wallet = DigitalWallet
     }},
-    ThriftType = {struct, union, {dmsl_payment_tool_token_thrift, 'PaymentToolToken'}},
-    {ok, EncodedToken} = lechiffre:encode(ThriftType, PaymentToolToken),
-    base64url:encode(<<"v1", EncodedToken/binary>>);
+    encode_payment_tool_token(PaymentToolToken);
 decode_payment_tool_token({crypto_currency, CryptoCurrency}) ->
     PaymentToolToken = {crypto_currency_payload, #ptt_CryptoCurrencyPayload{
         crypto_currency = CryptoCurrency
     }},
+    encode_payment_tool_token(PaymentToolToken).
+
+encode_payment_tool_token(PaymentToolToken) ->
     ThriftType = {struct, union, {dmsl_payment_tool_token_thrift, 'PaymentToolToken'}},
     {ok, EncodedToken} = lechiffre:encode(ThriftType, PaymentToolToken),
-    base64url:encode(<<"v1", EncodedToken/binary>>).
+    TokenVersion = payment_tool_token_version(),
+    base64url:encode(<<TokenVersion/binary, EncodedToken/binary>>).
+
+payment_tool_token_version() ->
+    <<"v1">>.
 
 decode_payment_tool_details({bank_card, V}) ->
     decode_bank_card_details(V, #{<<"detailsType">> => <<"PaymentToolDetailsBankCard">>});
