@@ -8,9 +8,10 @@
         stdlib,
         genlib,
         capi_woody_client,
-        dmsl,
+        damsel,
         binbase_proto,
         bender_proto,
+        lechiffre,
         swag_server,
         cowboy_cors,
         cowboy_access_log,
@@ -21,7 +22,8 @@
         payproc_errors,
         erl_health,
         uac,
-        scoper
+        scoper,
+        cds_proto
     ]},
     {env, []}
 ]}.

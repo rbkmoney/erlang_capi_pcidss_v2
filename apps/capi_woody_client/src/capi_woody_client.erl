@@ -69,7 +69,7 @@ get_service_url(ServiceName) ->
 -spec get_service_modname(service_name()) -> woody:service().
 
 get_service_modname(cds_storage) ->
-    {dmsl_cds_thrift, 'Storage'};
+    {cds_proto_storage_thrift, 'Storage'};
 get_service_modname(merchant_stat) ->
     {dmsl_merch_stat_thrift, 'MerchantStatistics'};
 get_service_modname(payment_tool_provider_apple_pay) ->

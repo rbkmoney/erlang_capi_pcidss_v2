@@ -2,14 +2,15 @@
 
 -include_lib("common_test/include/ct.hrl").
 
--include_lib("dmsl/include/dmsl_payment_processing_thrift.hrl").
--include_lib("dmsl/include/dmsl_accounter_thrift.hrl").
--include_lib("dmsl/include/dmsl_cds_thrift.hrl").
--include_lib("dmsl/include/dmsl_domain_config_thrift.hrl").
--include_lib("dmsl/include/dmsl_webhooker_thrift.hrl").
--include_lib("dmsl/include/dmsl_merch_stat_thrift.hrl").
--include_lib("dmsl/include/dmsl_reporting_thrift.hrl").
--include_lib("dmsl/include/dmsl_payment_tool_provider_thrift.hrl").
+-include_lib("damsel/include/dmsl_payment_processing_thrift.hrl").
+-include_lib("damsel/include/dmsl_accounter_thrift.hrl").
+-include_lib("cds_proto/include/cds_proto_storage_thrift.hrl").
+-include_lib("damsel/include/dmsl_domain_config_thrift.hrl").
+-include_lib("damsel/include/dmsl_webhooker_thrift.hrl").
+-include_lib("damsel/include/dmsl_merch_stat_thrift.hrl").
+-include_lib("damsel/include/dmsl_reporting_thrift.hrl").
+-include_lib("damsel/include/dmsl_payment_tool_provider_thrift.hrl").
+-include_lib("damsel/include/dmsl_payment_tool_token_thrift.hrl").
 -include_lib("binbase_proto/include/binbase_binbase_thrift.hrl").
 -include_lib("capi_dummy_data.hrl").
 -include_lib("jose/include/jose_jwk.hrl").
@@ -137,14 +138,13 @@ create_visa_payment_resource_ok_test(Config) ->
         {cds_storage, fun
             ('PutSession', _) -> {ok, ok};
             ('PutCard', [
-                #'CardData'{pan = <<"411111", _:6/binary, Mask:4/binary>>}
+                #'cds_PutCardData'{pan = <<"411111", _:6/binary, Mask:4/binary>>}
             ]) ->
-                {ok, #'PutCardResult'{
-                    bank_card = #domain_BankCard{
+                {ok, #'cds_PutCardResult'{
+                    bank_card = #cds_BankCard{
                         token = ?STRING,
-                        payment_system = visa,
                         bin = <<"411111">>,
-                        masked_pan = Mask
+                        last_digits = Mask
                     }
                 }}
         end},
@@ -152,7 +152,9 @@ create_visa_payment_resource_ok_test(Config) ->
         {binbase, fun('Lookup', _) -> {ok, ?BINBASE_LOOKUP_RESULT(<<"VISA">>)} end}
     ], Config),
     ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
-    {ok, #{<<"paymentToolDetails">> := #{
+    CardHolder = <<"Alexander Weinerschnitzel">>,
+    {ok, #{<<"paymentToolToken">> := PaymentToolToken,
+    <<"paymentToolDetails">> := #{
         <<"detailsType">> := <<"PaymentToolDetailsBankCard">>,
         <<"paymentSystem">> := <<"visa">>,
         <<"lastDigits">> := <<"1111">>,
@@ -162,12 +164,19 @@ create_visa_payment_resource_ok_test(Config) ->
         <<"paymentTool">> => #{
             <<"paymentToolType">> => <<"CardData">>,
             <<"cardNumber">> => <<"4111111111111111">>,
-            <<"cardHolder">> => <<"Alexander Weinerschnitzel">>,
+            <<"cardHolder">> => CardHolder,
             <<"expDate">> => <<"08/27">>,
             <<"cvv">> => <<"232">>
         },
         <<"clientInfo">> => ClientInfo
-    }).
+    }),
+    <<"v1", EncryptedToken/binary>> = base64url:decode(PaymentToolToken),
+    ThriftType = {struct, union, {dmsl_payment_tool_token_thrift, 'PaymentToolToken'}},
+    SecretKeys = get_secret_keys("keys/local/secret.key", Config),
+    {ok, {bank_card_payload, #ptt_BankCardPayload{
+        bank_card = BankCard
+    }}} = lechiffre:decode(ThriftType, EncryptedToken, SecretKeys),
+    CardHolder = BankCard#domain_BankCard.cardholder_name.
 
 -spec create_nspkmir_payment_resource_ok_test(_) ->
     _.
@@ -176,14 +185,13 @@ create_nspkmir_payment_resource_ok_test(Config) ->
         {cds_storage, fun
             ('PutSession', _) -> {ok, ok};
             ('PutCard', [
-                #'CardData'{pan = <<"22001111", _:6/binary, Mask:2/binary>>}
+                #'cds_PutCardData'{pan = <<"22001111", _:6/binary, Mask:2/binary>>}
             ]) ->
-                {ok, #'PutCardResult'{
-                    bank_card = #domain_BankCard{
+                {ok, #'cds_PutCardResult'{
+                    bank_card = #cds_BankCard{
                         token = ?STRING,
-                        payment_system = nspkmir,
                         bin = <<"22001111">>,
-                        masked_pan = Mask
+                        last_digits = Mask
                     }
                 }}
         end},
@@ -346,10 +354,17 @@ create_googlepay_plain_payment_resource_ok_test(Config) ->
 %%
 
 start_capi(Config) ->
+    KeySource = get_keysource("keys/local/secret.key", Config),
     CapiEnv = [
         {ip, ?CAPI_IP},
         {port, ?CAPI_PORT},
         {service_type, real},
+        {lechiffre_opts, #{
+            encryption_key_path => {1, KeySource},
+            decryption_key_path => #{
+                1 => KeySource
+            }
+        }},
         {access_conf, #{
             jwt => #{
                 keyset => #{
@@ -436,3 +451,12 @@ get_context(Token) ->
 
 get_keysource(Key, Config) ->
     filename:join(?config(data_dir, Config), Key).
+
+get_secret_keys(Path, Config) ->
+    {ok, Key} = file:read_file(get_keysource(Path, Config)),
+    #{
+        encryption_key => {1, Key},
+        decryption_key => #{
+            1 => Key
+        }
+    }.

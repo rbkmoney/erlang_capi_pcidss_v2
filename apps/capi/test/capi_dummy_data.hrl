@@ -2,11 +2,10 @@
 -define(INTEGER, 10000).
 -define(TIMESTAMP, <<"2016-03-22T06:12:27Z">>).
 
--define(BANK_CARD, #domain_BankCard{
+-define(BANK_CARD, #cds_BankCard{
     token = ?STRING,
-    payment_system = visa,
     bin = <<"411111">>,
-    masked_pan = <<"411111******1111">>
+    last_digits = <<"1111">>
 }).
 
 -define(BINBASE_LOOKUP_RESULT, ?BINBASE_LOOKUP_RESULT(<<"MASTERCARD">>)).
@@ -48,7 +47,7 @@
     details = Details
 }).
 
--define(PUT_CARD_RESULT, #'PutCardResult'{
+-define(PUT_CARD_RESULT, #'cds_PutCardResult'{
     bank_card = ?BANK_CARD
 }).
 

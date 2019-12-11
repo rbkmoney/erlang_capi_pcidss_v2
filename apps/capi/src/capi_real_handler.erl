@@ -1,14 +1,15 @@
 -module(capi_real_handler).
 
--include_lib("dmsl/include/dmsl_payment_processing_thrift.hrl").
--include_lib("dmsl/include/dmsl_domain_thrift.hrl").
--include_lib("dmsl/include/dmsl_cds_thrift.hrl").
--include_lib("dmsl/include/dmsl_merch_stat_thrift.hrl").
--include_lib("dmsl/include/dmsl_webhooker_thrift.hrl").
--include_lib("dmsl/include/dmsl_user_interaction_thrift.hrl").
--include_lib("dmsl/include/dmsl_geo_ip_thrift.hrl").
--include_lib("dmsl/include/dmsl_reporting_thrift.hrl").
--include_lib("dmsl/include/dmsl_payment_tool_provider_thrift.hrl").
+-include_lib("damsel/include/dmsl_payment_processing_thrift.hrl").
+-include_lib("damsel/include/dmsl_domain_thrift.hrl").
+-include_lib("cds_proto/include/cds_proto_storage_thrift.hrl").
+-include_lib("damsel/include/dmsl_merch_stat_thrift.hrl").
+-include_lib("damsel/include/dmsl_webhooker_thrift.hrl").
+-include_lib("damsel/include/dmsl_user_interaction_thrift.hrl").
+-include_lib("damsel/include/dmsl_geo_ip_thrift.hrl").
+-include_lib("damsel/include/dmsl_reporting_thrift.hrl").
+-include_lib("damsel/include/dmsl_payment_tool_provider_thrift.hrl").
+-include_lib("damsel/include/dmsl_payment_tool_token_thrift.hrl").
 
 -behaviour(swag_server_logic_handler).
 
@@ -147,6 +148,8 @@ logic_error(Code, Message) ->
 general_error(Message) ->
     #{<<"message">> => genlib:to_binary(Message)}.
 
+parse_exp_date(undefined) ->
+    undefined;
 parse_exp_date(ExpDate) when is_binary(ExpDate) ->
     [Month, Year0] = binary:split(ExpDate, <<"/">>),
     Year = case genlib:to_int(Year0) of
@@ -155,7 +158,10 @@ parse_exp_date(ExpDate) when is_binary(ExpDate) ->
         Y ->
             Y
     end,
-    {genlib:to_int(Month), Year}.
+    #cds_ExpDate{
+        month = genlib:to_int(Month),
+        year = Year
+    }.
 
 get_auth_context(#{auth_context := AuthContext}) ->
     AuthContext.
@@ -165,57 +171,6 @@ get_peer_info(#{peer := Peer}) ->
 
 get_party_id(Context) ->
     capi_auth:get_subject_id(get_auth_context(Context)).
-
-decode_bank_card(#domain_BankCard{
-    'token'  = Token,
-    'payment_system' = PaymentSystem,
-    'bin' = Bin,
-    'masked_pan' = MaskedPan,
-    'token_provider' = TokenProvider,
-    'issuer_country' = IssuerCountry,
-    'bank_name'      = BankName,
-    'metadata'       = Metadata
-}) ->
-    capi_utils:map_to_base64url(genlib_map:compact(#{
-        <<"type">> => <<"bank_card">>,
-        <<"token">> => Token,
-        <<"payment_system">> => PaymentSystem,
-        <<"bin">> => Bin,
-        <<"masked_pan">> => MaskedPan,
-        <<"token_provider">> => TokenProvider,
-        <<"issuer_country">> => IssuerCountry,
-        <<"bank_name"     >> => BankName,
-        <<"metadata"      >> => decode_bank_card_metadata(Metadata)
-    })).
-
-decode_bank_card_metadata(undefined) ->
-    undefined;
-decode_bank_card_metadata(Meta) ->
-    maps:map(fun(_, Data) -> capi_msgp_marshalling:unmarshal(Data) end, Meta).
-
-decode_payment_terminal(#domain_PaymentTerminal{
-    terminal_type = Type
-}) ->
-    capi_utils:map_to_base64url(#{
-        <<"type">> => <<"payment_terminal">>,
-        <<"terminal_type">> => Type
-    }).
-
-decode_digital_wallet(#domain_DigitalWallet{
-    provider = Provider,
-    id = ID
-}) ->
-    capi_utils:map_to_base64url(#{
-        <<"type">> => <<"digital_wallet">>,
-        <<"provider">> => atom_to_binary(Provider, utf8),
-        <<"id">> => ID
-    }).
-
-decode_crypto_wallet(CryptoCurrency) ->
-    capi_utils:map_to_base64url(#{
-        <<"type"           >> => <<"crypto_wallet">>,
-        <<"crypto_currency">> => convert_crypto_currency_to_swag(CryptoCurrency)
-    }).
 
 decode_client_info(ClientInfo) ->
     #{
@@ -236,13 +191,34 @@ encode_content(json, Data) ->
     }.
 
 decode_payment_tool_token({bank_card, BankCard}) ->
-    decode_bank_card(BankCard);
+    PaymentToolToken = {bank_card_payload, #ptt_BankCardPayload{
+        bank_card = BankCard
+    }},
+    encode_payment_tool_token(PaymentToolToken);
 decode_payment_tool_token({payment_terminal, PaymentTerminal}) ->
-    decode_payment_terminal(PaymentTerminal);
+    PaymentToolToken = {payment_terminal_payload, #ptt_PaymentTerminalPayload{
+        payment_terminal = PaymentTerminal
+    }},
+    encode_payment_tool_token(PaymentToolToken);
 decode_payment_tool_token({digital_wallet, DigitalWallet}) ->
-    decode_digital_wallet(DigitalWallet);
+    PaymentToolToken = {digital_wallet_payload, #ptt_DigitalWalletPayload{
+        digital_wallet = DigitalWallet
+    }},
+    encode_payment_tool_token(PaymentToolToken);
 decode_payment_tool_token({crypto_currency, CryptoCurrency}) ->
-    decode_crypto_wallet(CryptoCurrency).
+    PaymentToolToken = {crypto_currency_payload, #ptt_CryptoCurrencyPayload{
+        crypto_currency = CryptoCurrency
+    }},
+    encode_payment_tool_token(PaymentToolToken).
+
+encode_payment_tool_token(PaymentToolToken) ->
+    ThriftType = {struct, union, {dmsl_payment_tool_token_thrift, 'PaymentToolToken'}},
+    {ok, EncodedToken} = lechiffre:encode(ThriftType, PaymentToolToken),
+    TokenVersion = payment_tool_token_version(),
+    base64url:encode(<<TokenVersion/binary, EncodedToken/binary>>).
+
+payment_tool_token_version() ->
+    <<"v1">>.
 
 decode_payment_tool_details({bank_card, V}) ->
     decode_bank_card_details(V, #{<<"detailsType">> => <<"PaymentToolDetailsBankCard">>});
@@ -323,17 +299,19 @@ prepare_client_ip(Context) ->
     genlib:to_binary(inet:ntoa(IP)).
 
 process_card_data(Data, IdempotentKey, ReqCtx) ->
-    CardData = encode_card_data(Data),
+    PutCardData = encode_card_data(Data),
     SessionData = encode_session_data(Data),
-    put_card_data_to_cds(CardData, SessionData, IdempotentKey, ReqCtx).
+    put_card_data_to_cds(PutCardData, SessionData, IdempotentKey, ReqCtx).
 
-put_card_to_cds(CardData, ReqCtx) ->
-    case capi_bankcard:lookup_bank_info(CardData#'CardData'.pan, ReqCtx) of
+put_card_to_cds(PutCardData, ReqCtx) ->
+    case capi_bankcard:lookup_bank_info(PutCardData#cds_PutCardData.pan, ReqCtx) of
         {ok, BankInfo} ->
-            case service_call(cds_storage, 'PutCard', [CardData], ReqCtx) of
-                {ok, #'PutCardResult'{bank_card = BankCard}} ->
-                    {bank_card, expand_card_info(BankCard, BankInfo)};
-                {exception, #'InvalidCardData'{}} ->
+            case service_call(cds_storage, 'PutCard', [PutCardData], ReqCtx) of
+                {ok, #cds_PutCardResult{bank_card = BankCard}} ->
+                    ExpDate = PutCardData#cds_PutCardData.exp_date,
+                    CardholderName = PutCardData#cds_PutCardData.cardholder_name,
+                    {bank_card, expand_card_info(BankCard, BankInfo, ExpDate, CardholderName)};
+                {exception, #cds_InvalidCardData{}} ->
                     throw({ok, {400, #{}, logic_error(invalidRequest, <<"Card data is invalid">>)}})
             end;
         {error, _Reason} ->
@@ -344,8 +322,8 @@ put_session_to_cds(SessionID, SessionData, ReqCtx) ->
     {ok, ok} = service_call(cds_storage, 'PutSession', [SessionID, SessionData], ReqCtx),
     ok.
 
-put_card_data_to_cds(CardData, SessionData, IdempotentKey, ReqCtx) ->
-    BankCard = put_card_to_cds(CardData, ReqCtx),
+put_card_data_to_cds(PutCardData, SessionData, IdempotentKey, ReqCtx) ->
+    BankCard = put_card_to_cds(PutCardData, ReqCtx),
     {bank_card, #domain_BankCard{token = Token}} = BankCard,
     RandomID = gen_random_id(),
     Hash = erlang:phash2(Token),
@@ -353,38 +331,47 @@ put_card_data_to_cds(CardData, SessionData, IdempotentKey, ReqCtx) ->
     ok = put_session_to_cds(SessionID, SessionData, ReqCtx),
     {BankCard, SessionID}.
 
-expand_card_info(BankCard, #{
-    payment_system  := PaymentSystem,
-    bank_name       := BankName,
-    issuer_country  := IssuerCountry,
-    metadata        := Metadata
-}) ->
-    BankCard#'domain_BankCard'{
+expand_card_info(BankCard, BankInfo, ExpDate, CardholderName) ->
+    #{
+        payment_system  := PaymentSystem,
+        bank_name       := BankName,
+        issuer_country  := IssuerCountry,
+        metadata        := Metadata
+    } = BankInfo,
+    #domain_BankCard{
+        token = BankCard#cds_BankCard.token,
+        bin = BankCard#cds_BankCard.bin,
+        masked_pan = BankCard#cds_BankCard.last_digits,
+        exp_date = encode_exp_date(ExpDate),
         payment_system = PaymentSystem,
         issuer_country = IssuerCountry,
         bank_name = BankName,
+        cardholder_name = CardholderName,
         metadata = #{
             ?CAPI_NS => capi_msgp_marshalling:marshal(Metadata)
         }
     }.
 
 encode_card_data(CardData) ->
-    {Month, Year} = parse_exp_date(genlib_map:get(<<"expDate">>, CardData)),
+    ExpDate = parse_exp_date(genlib_map:get(<<"expDate">>, CardData)),
     CardNumber = genlib:to_binary(genlib_map:get(<<"cardNumber">>, CardData)),
-    #'CardData'{
+    #cds_PutCardData{
         pan  = CardNumber,
-        exp_date = #'ExpDate'{
-            month = Month,
-            year = Year
-        },
+        exp_date = ExpDate,
         cardholder_name = genlib_map:get(<<"cardHolder">>, CardData)
     }.
 
 encode_session_data(CardData) ->
-    #'SessionData'{
-        auth_data = {card_security_code, #'CardSecurityCode'{
+    #cds_SessionData{
+        auth_data = {card_security_code, #cds_CardSecurityCode{
             value = genlib_map:get(<<"cvv">>, CardData)
         }}
+    }.
+
+encode_exp_date(#cds_ExpDate{month = Month, year = Year}) ->
+    #domain_BankCardExpDate{
+        month = Month,
+        year = Year
     }.
 
 process_payment_terminal_data(Data, _ReqCtx) ->
@@ -441,8 +428,8 @@ encode_tokenized_session_data(#paytoolprv_UnwrappedPaymentTool{
         }}
     }}
 }) ->
-    #'SessionData'{
-        auth_data = {auth_3ds, #'Auth3DS'{
+    #cds_SessionData{
+        auth_data = {auth_3ds, #cds_Auth3DS{
             cryptogram = Cryptogram,
             eci = ECI
         }}
@@ -450,8 +437,8 @@ encode_tokenized_session_data(#paytoolprv_UnwrappedPaymentTool{
 encode_tokenized_session_data(#paytoolprv_UnwrappedPaymentTool{
     payment_data = {card, #paytoolprv_Card{}}
 }) ->
-    #'SessionData'{
-        auth_data = {card_security_code, #'CardSecurityCode'{
+    #cds_SessionData{
+        auth_data = {card_security_code, #cds_CardSecurityCode{
             %% TODO dirty hack for test GooglePay card data
             value = <<"">>
         }}
@@ -469,9 +456,9 @@ encode_tokenized_card_data(#paytoolprv_UnwrappedPaymentTool{
         cardholder_name = CardholderName
     }
 }) ->
-    #'CardData'{
+    #cds_PutCardData{
         pan  = DPAN,
-        exp_date = #'ExpDate'{
+        exp_date = #cds_ExpDate{
             month = Month,
             year = Year
         },
@@ -489,9 +476,9 @@ encode_tokenized_card_data(#paytoolprv_UnwrappedPaymentTool{
         cardholder_name = CardholderName
     }
 }) ->
-    #'CardData'{
+    #cds_PutCardData{
         pan  = PAN,
-        exp_date = #'ExpDate'{
+        exp_date = #cds_ExpDate{
             month = Month,
             year = Year
         },
