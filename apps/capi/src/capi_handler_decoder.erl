@@ -1,6 +1,7 @@
 -module(capi_handler_decoder).
 
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
+-include_lib("damsel/include/dmsl_payment_tool_token_thrift.hrl").
 
 -export([decode_disposable_payment_resource/1]).
 
@@ -15,96 +16,39 @@
 -type decode_data() :: #{binary() => term()}.
 
 decode_payment_tool_token({bank_card, BankCard}) ->
-    decode_bank_card(BankCard);
+    PaymentToolToken = {bank_card_payload, #ptt_BankCardPayload{
+        bank_card = BankCard
+    }},
+    encode_payment_tool_token(PaymentToolToken);
 decode_payment_tool_token({payment_terminal, PaymentTerminal}) ->
-    decode_payment_terminal(PaymentTerminal);
+    PaymentToolToken = {payment_terminal_payload, #ptt_PaymentTerminalPayload{
+        payment_terminal = PaymentTerminal
+    }},
+    encode_payment_tool_token(PaymentToolToken);
 decode_payment_tool_token({digital_wallet, DigitalWallet}) ->
-    decode_digital_wallet(DigitalWallet);
+    PaymentToolToken = {digital_wallet_payload, #ptt_DigitalWalletPayload{
+        digital_wallet = DigitalWallet
+    }},
+    encode_payment_tool_token(PaymentToolToken);
 decode_payment_tool_token({crypto_currency, CryptoCurrency}) ->
-    decode_crypto_wallet(CryptoCurrency);
+    PaymentToolToken = {crypto_currency_payload, #ptt_CryptoCurrencyPayload{
+        crypto_currency = CryptoCurrency
+    }},
+    encode_payment_tool_token(PaymentToolToken);
 decode_payment_tool_token({mobile_commerce, MobileCommerce}) ->
-    decode_mobile_commerce(MobileCommerce).
+    PaymentToolToken = {mobile_commerce_payload, #ptt_MobileCommercePayload {
+        mobile_commerce = MobileCommerce
+    }},
+    encode_payment_tool_token(PaymentToolToken).
 
-decode_bank_card(#domain_BankCard{
-    'token'          = Token,
-    'payment_system' = PaymentSystem,
-    'bin'            = Bin,
-    'masked_pan'     = MaskedPan,
-    'token_provider' = TokenProvider,
-    'issuer_country' = IssuerCountry,
-    'bank_name'      = BankName,
-    'metadata'       = Metadata,
-    'is_cvv_empty'   = IsCVVEmpty
-}) ->
-    capi_utils:map_to_base64url(genlib_map:compact(#{
-        <<"type"          >> => <<"bank_card">>,
-        <<"token"         >> => Token,
-        <<"payment_system">> => PaymentSystem,
-        <<"bin"           >> => Bin,
-        <<"masked_pan"    >> => MaskedPan,
-        <<"token_provider">> => TokenProvider,
-        <<"issuer_country">> => IssuerCountry,
-        <<"bank_name"     >> => BankName,
-        <<"metadata"      >> => decode_bank_card_metadata(Metadata),
-        <<"is_cvv_empty"  >> => decode_bank_card_cvv_flag(IsCVVEmpty)
-    })).
+encode_payment_tool_token(PaymentToolToken) ->
+    ThriftType = {struct, union, {dmsl_payment_tool_token_thrift, 'PaymentToolToken'}},
+    {ok, EncodedToken} = lechiffre:encode(ThriftType, PaymentToolToken),
+    TokenVersion = payment_tool_token_version(),
+    base64url:encode(<<TokenVersion/binary, EncodedToken/binary>>).
 
-decode_bank_card_cvv_flag(undefined) ->
-    undefined;
-decode_bank_card_cvv_flag(CVVFlag) when is_atom(CVVFlag) ->
-    erlang:atom_to_binary(CVVFlag, utf8).
-
-decode_bank_card_metadata(undefined) ->
-    undefined;
-decode_bank_card_metadata(Meta) ->
-    maps:map(fun(_, Data) -> capi_msgp_marshalling:unmarshal(Data) end, Meta).
-
-decode_payment_terminal(#domain_PaymentTerminal{
-    terminal_type = Type
-}) ->
-    capi_utils:map_to_base64url(#{
-        <<"type"         >> => <<"payment_terminal">>,
-        <<"terminal_type">> => Type
-    }).
-
-decode_digital_wallet(#domain_DigitalWallet{
-    provider = Provider,
-    id = ID,
-    token = undefined
-}) ->
-    capi_utils:map_to_base64url(#{
-        <<"type"    >> => <<"digital_wallet">>,
-        <<"provider">> => atom_to_binary(Provider, utf8),
-        <<"id"      >> => ID
-    });
-decode_digital_wallet(#domain_DigitalWallet{
-    provider = Provider,
-    id = ID,
-    token = Token
-}) ->
-    capi_utils:map_to_base64url(#{
-        <<"type"    >> => <<"digital_wallet">>,
-        <<"provider">> => atom_to_binary(Provider, utf8),
-        <<"id"      >> => ID,
-        <<"token"   >> => Token
-    }).
-
-decode_crypto_wallet(CryptoCurrency) ->
-    capi_utils:map_to_base64url(#{
-        <<"type"           >> => <<"crypto_wallet">>,
-        <<"crypto_currency">> => convert_crypto_currency_to_swag(CryptoCurrency)
-    }).
-
-decode_mobile_commerce(MobileCommerce) ->
-    #domain_MobileCommerce{
-        operator = Operator,
-        phone = Phone
-    } = MobileCommerce,
-    capi_utils:map_to_base64url(#{
-        <<"type"       >> => <<"mobile_commerce">>,
-        <<"phoneNumber">> => decode_mobile_phone(Phone),
-        <<"operator">>    => Operator
-    }).
+payment_tool_token_version() ->
+    <<"v1">>.
 
 decode_payment_tool_details({bank_card, V}) ->
     decode_bank_card_details(V, #{<<"detailsType">> => <<"PaymentToolDetailsBankCard">>});

@@ -11,6 +11,7 @@
         binbase_proto,
         tds_proto,
         damsel,
+        lechiffre,
         moneypenny,
         snowflake,
         rfc3339,

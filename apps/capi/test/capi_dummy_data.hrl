@@ -1,7 +1,7 @@
 -define(STRING, <<"TEST">>).
 -define(INTEGER, 10000).
 -define(TIMESTAMP, <<"2016-03-22T06:12:27Z">>).
-
+-define(DPAN, <<"4111111111111234">>).
 -define(BANK_CARD, #cds_BankCard{
     token = ?STRING,
     bin = <<"411111">>,
@@ -28,7 +28,7 @@
     ?UNWRAPPED_PAYMENT_TOOL(
         Details,
         {tokenized_card, #paytoolprv_TokenizedCard{
-            dpan = ?STRING,
+            dpan = ?DPAN,
             exp_date = #paytoolprv_ExpDate{
                 month = 10,
                 year = 2018

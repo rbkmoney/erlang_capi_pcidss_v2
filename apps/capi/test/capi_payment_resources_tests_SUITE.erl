@@ -11,6 +11,7 @@
 -include_lib("cds_proto/include/cds_proto_storage_thrift.hrl").
 -include_lib("capi_dummy_data.hrl").
 -include_lib("jose/include/jose_jwk.hrl").
+-include_lib("damsel/include/dmsl_payment_tool_token_thrift.hrl").
 
 -export([all/0]).
 -export([groups/0]).
@@ -181,7 +182,7 @@ create_visa_payment_resource_ok_test(Config) ->
         {cds_storage, fun
             ('PutSession', _) -> {ok, ok};
             ('PutCard', [
-                #cds_CardData{pan = <<"411111", _:6/binary, Mask:4/binary>>}
+                #cds_PutCardData{pan = <<"411111", _:6/binary, Mask:4/binary>>}
             ]) ->
                 {ok, #cds_PutCardResult{
                     bank_card = #cds_BankCard{
@@ -219,7 +220,7 @@ create_visa_with_empty_cvv_ok_test(Config) ->
         {cds_storage, fun
             ('PutSession', _) -> {ok, ok};
             ('PutCard', [
-                #cds_CardData{pan = <<"411111", _:6/binary, Mask:4/binary>>}
+                #cds_PutCardData{pan = <<"411111", _:6/binary, Mask:4/binary>>}
             ]) ->
                 {ok, #cds_PutCardResult{
                     bank_card = #cds_BankCard{
@@ -257,7 +258,7 @@ create_visa_payment_resource_idemp_ok_test(Config) ->
         {cds_storage, fun
             ('PutSession', _) -> {ok, ok};
             ('PutCard', [
-                #cds_CardData{pan = <<"411111", _:6/binary, Mask:4/binary>>}
+                #cds_PutCardData{pan = <<"411111", _:6/binary, Mask:4/binary>>}
             ]) ->
                 {ok, #cds_PutCardResult{
                     bank_card = #cds_BankCard{
@@ -290,12 +291,12 @@ create_visa_payment_resource_idemp_ok_test(Config) ->
         <<"cardNumberMask">> => <<"411111******1111">>
     },
     {ok, #{
-        <<"paymentToolToken">>   := ToolToken,
+        <<"paymentToolToken">>   := _ToolToken1,
         <<"paymentSession">>     := ToolSession,
         <<"paymentToolDetails">> := PaymentToolDetails
     }} = capi_client_tokens:create_payment_resource(?config(context, Config), Params),
     {ok, #{
-        <<"paymentToolToken">> := ToolToken,
+        <<"paymentToolToken">> := _ToolToken2,
         <<"paymentSession">>   := ToolSession,
         <<"paymentToolDetails">> := PaymentToolDetails
     }} = capi_client_tokens:create_payment_resource(?config(context, Config), Params).
@@ -312,7 +313,7 @@ create_visa_payment_resource_idemp_fail_test(Config) ->
         {cds_storage, fun
             ('PutSession', _) -> {ok, ok};
             ('PutCard', [
-                #cds_CardData{pan = <<"511111", _:6/binary, Mask:4/binary>>}
+                #cds_PutCardData{pan = <<"511111", _:6/binary, Mask:4/binary>>}
             ]) ->
                 {ok, #cds_PutCardResult{
                     bank_card = #cds_BankCard{
@@ -322,7 +323,7 @@ create_visa_payment_resource_idemp_fail_test(Config) ->
                     }
                 }};
             ('PutCard', [
-                #cds_CardData{pan = <<"411111", _:6/binary, Mask:4/binary>>}
+                #cds_PutCardData{pan = <<"411111", _:6/binary, Mask:4/binary>>}
             ]) ->
                 {ok, #cds_PutCardResult{
                     bank_card = #cds_BankCard{
@@ -366,7 +367,7 @@ create_nspkmir_payment_resource_ok_test(Config) ->
         {cds_storage, fun
             ('PutSession', _) -> {ok, ok};
             ('PutCard', [
-                #cds_CardData{pan = <<"22001111", _:6/binary, Mask:2/binary>>}
+                #cds_PutCardData{pan = <<"22001111", _:6/binary, Mask:2/binary>>}
             ]) ->
                 {ok, #cds_PutCardResult{
                     bank_card = #cds_BankCard{
@@ -431,12 +432,17 @@ create_mobile_payment_resource_ok_test(Config) ->
         <<"detailsType">> => <<"PaymentToolDetailsMobileCommerce">>,
         <<"phoneNumber">> => <<"+7******1122">>
     }, maps:get(<<"paymentToolDetails">>, Res)),
-
-    ?assertEqual(#{
-        <<"type">> => <<"mobile_commerce">>,
-        <<"phoneNumber">> => MobilePhone,
-        <<"operator">> => <<"megafone">>
-    }, capi_utils:base64url_to_map(maps:get(<<"paymentToolToken">>, Res))).
+     Path = capi_ct_helper:get_keysource("keys/local/secret.key", Config),
+    SecretKeys = get_secret_keys(Path),
+    PaymentToolToken = maps:get(<<"paymentToolToken">>, Res),
+    Token = decode_token_tool(mobile_commerce, PaymentToolToken, SecretKeys),
+    ?assertEqual(#domain_MobileCommerce{
+        phone =  #domain_MobilePhone{
+            cc = <<"7">>,
+            ctn = <<"9210001122">>
+        },
+        operator = megafone
+    }, Token).
 
 -spec create_qw_payment_resource_ok_test(_) ->
     _.
@@ -512,11 +518,49 @@ create_qw_payment_resource_with_access_token_depends_on_external_id(Config) ->
     ResultExtId0  = capi_client_tokens:create_payment_resource(?config(context, Config), PaymentParamsExtId),
     ResultExtId1  = capi_client_tokens:create_payment_resource(?config(context, Config), PaymentParamsExtId),
     ResultNoExtId = capi_client_tokens:create_payment_resource(?config(context, Config), PaymentParamsNoExtId),
+    Path = capi_ct_helper:get_keysource("keys/local/secret.key", Config),
+    SecretKeys = get_secret_keys(Path),
     {ok, #{<<"paymentToolToken">> := TokenExtId0}}  = ResultExtId0,
     {ok, #{<<"paymentToolToken">> := TokenExtId1}}  = ResultExtId1,
     {ok, #{<<"paymentToolToken">> := TokenNoExtId}} = ResultNoExtId,
-    ?assertEqual(TokenExtId0, TokenExtId1),
-    ?assertNotEqual(TokenExtId0, TokenNoExtId).
+    true = equal_encrypt_token(TokenExtId0, TokenExtId1, SecretKeys),
+    true = not_equal_encrypt_token(TokenExtId0, TokenNoExtId, SecretKeys),
+    ok.
+
+
+equal_encrypt_token(ResultExtId0, ResultExtId1, SecretKeys) ->
+    DW1 = decode_token_tool(digital_wallet, ResultExtId0, SecretKeys),
+    DW2 = decode_token_tool(digital_wallet, ResultExtId1, SecretKeys),
+    DW1 =:= DW2.
+
+not_equal_encrypt_token(ResultExtId0, ResultExtId1, SecretKeys) ->
+    DW1 = decode_token_tool(digital_wallet, ResultExtId0, SecretKeys),
+    DW2 = decode_token_tool(digital_wallet, ResultExtId1, SecretKeys),
+    DW1 =/= DW2.
+
+decode_token_tool(mobile_commerce, EncryptedToken, SecretKeys) ->
+    <<"v1", Token/binary>> = base64url:decode(EncryptedToken),
+    ThriftType = {struct, union, {dmsl_payment_tool_token_thrift, 'PaymentToolToken'}},
+    {ok, {mobile_commerce_payload, #ptt_MobileCommercePayload{
+        mobile_commerce = MobileCommerce
+    }}} = lechiffre:decode(ThriftType, Token, SecretKeys),
+    MobileCommerce;
+decode_token_tool(digital_wallet, EncryptedToken, SecretKeys) ->
+    <<"v1", Token/binary>> = base64url:decode(EncryptedToken),
+    ThriftType = {struct, union, {dmsl_payment_tool_token_thrift, 'PaymentToolToken'}},
+    {ok, {digital_wallet_payload, #ptt_DigitalWalletPayload{
+        digital_wallet = DigitalWallet
+    }}} = lechiffre:decode(ThriftType, Token, SecretKeys),
+    DigitalWallet.
+
+get_secret_keys(Path) ->
+    {ok, Key} = file:read_file(Path),
+    #{
+        encryption_key => {1, Key},
+        decryption_key => #{
+            1 => Key
+        }
+    }.
 
 -spec create_crypto_payment_resource_ok_test(_) ->
     _.
@@ -546,10 +590,11 @@ create_applepay_tokenized_payment_resource_ok_test(Config) ->
         {binbase, fun('Lookup', _) -> {ok, ?BINBASE_LOOKUP_RESULT} end}
     ], Config),
     ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
-    {ok, #{<<"paymentToolDetails">> := Details = #{
+    {ok, #{<<"paymentToolDetails">> := #{
         <<"paymentSystem">> := <<"mastercard">>,
-        <<"cardNumberMask">> := <<"************1234">>,
-        <<"last4">> := <<"1234">>
+        <<"cardNumberMask">> := <<"411111******1234">>,
+        <<"last4">> := <<"1234">>,
+        <<"first6">> := <<"411111">>
     }}} =
         capi_client_tokens:create_payment_resource(?config(context, Config), #{
             <<"paymentTool">> => #{
@@ -559,8 +604,7 @@ create_applepay_tokenized_payment_resource_ok_test(Config) ->
                 <<"paymentToken">> => #{}
             },
             <<"clientInfo">> => ClientInfo
-        }),
-    false = maps:is_key(<<"first6">>, Details).
+        }).
 
 -spec create_googlepay_tokenized_payment_resource_ok_test(_) ->
     _.
@@ -575,10 +619,10 @@ create_googlepay_tokenized_payment_resource_ok_test(Config) ->
         {binbase, fun('Lookup', _) -> {ok, ?BINBASE_LOOKUP_RESULT} end}
     ], Config),
     ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
-    {ok, #{<<"paymentToolDetails">> := Details = #{
+    {ok, #{<<"paymentToolDetails">> := #{
         <<"paymentSystem">> := <<"mastercard">>,
         <<"tokenProvider">> := <<"googlepay">>,
-        <<"cardNumberMask">> := <<"************1234">>,
+        <<"cardNumberMask">> := <<"411111******1234">>,
         <<"last4">> := <<"1234">>
     }}} =
         capi_client_tokens:create_payment_resource(?config(context, Config), #{
@@ -589,8 +633,7 @@ create_googlepay_tokenized_payment_resource_ok_test(Config) ->
                 <<"paymentToken">> => #{}
             },
             <<"clientInfo">> => ClientInfo
-        }),
-    false = maps:is_key(<<"first6">>, Details).
+        }).
 
 -spec create_googlepay_plain_payment_resource_ok_test(_) ->
     _.
