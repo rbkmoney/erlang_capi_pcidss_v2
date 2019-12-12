@@ -15,7 +15,8 @@
 
 -type decode_data() :: #{binary() => term()}.
 
-decode_payment_tool_token({bank_card, BankCard}) ->
+decode_payment_tool_token({CardType, BankCard})
+when CardType =:= bank_card orelse CardType =:= tokenized_bank_card ->
     PaymentToolToken = {bank_card_payload, #ptt_BankCardPayload{
         bank_card = BankCard
     }},
@@ -50,8 +51,9 @@ encode_payment_tool_token(PaymentToolToken) ->
 payment_tool_token_version() ->
     <<"v1">>.
 
-decode_payment_tool_details({bank_card, V}) ->
-    decode_bank_card_details(V, #{<<"detailsType">> => <<"PaymentToolDetailsBankCard">>});
+decode_payment_tool_details({CardType, V})
+when CardType =:= bank_card orelse CardType =:= tokenized_bank_card ->
+    decode_bank_card_details({CardType, V}, #{<<"detailsType">> => <<"PaymentToolDetailsBankCard">>});
 decode_payment_tool_details({payment_terminal, V}) ->
     decode_payment_terminal_details(V, #{<<"detailsType">> => <<"PaymentToolDetailsPaymentTerminal">>});
 decode_payment_tool_details({digital_wallet, V}) ->
@@ -71,9 +73,9 @@ decode_payment_tool_details({mobile_commerce, MobileCommerce}) ->
         <<"phoneNumber">> => mask_phone_number(PhoneNumber)
     }.
 
-decode_bank_card_details(BankCard, V) ->
+decode_bank_card_details({_, BankCard} = Card, V) ->
     LastDigits = decode_last_digits(BankCard#domain_BankCard.masked_pan),
-    Bin = BankCard#domain_BankCard.bin,
+    Bin = get_bank_card_bin(Card),
     capi_handler_utils:merge_and_compact(V, #{
         <<"last4">>          => LastDigits,
         <<"first6">>         => Bin,
@@ -81,6 +83,11 @@ decode_bank_card_details(BankCard, V) ->
         <<"paymentSystem" >> => genlib:to_binary(BankCard#domain_BankCard.payment_system),
         <<"tokenProvider" >> => decode_token_provider(BankCard#domain_BankCard.token_provider)
     }).
+
+get_bank_card_bin({bank_card, BankCard}) ->
+    BankCard#domain_BankCard.bin;
+get_bank_card_bin({tokenized_bank_card, _}) ->
+    undefined.
 
 decode_token_provider(Provider) when Provider /= undefined ->
     genlib:to_binary(Provider);

@@ -315,8 +315,9 @@ process_tokenized_card_data_result(
         details = PaymentDetails
     }
 ) ->
+    Type = get_tokenized_card_type(PaymentData),
     {
-        {bank_card, BankCard#domain_BankCard{
+        {Type, BankCard#domain_BankCard{
             bin            = get_tokenized_bin(PaymentData),
             payment_system = PaymentSystem,
             masked_pan     = get_tokenized_pan(Last4, PaymentData),
@@ -326,6 +327,11 @@ process_tokenized_card_data_result(
         }},
         SessionID
     }.
+
+get_tokenized_card_type({tokenized_card, _}) ->
+    tokenized_bank_card;
+get_tokenized_card_type({card, _}) ->
+    bank_card.
 
 get_tokenized_bin({card, #paytoolprv_Card{pan = PAN}}) ->
     get_first6(PAN);

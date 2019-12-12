@@ -84,8 +84,8 @@ init([]) ->
     [test_case_name()].
 all() ->
     [
-        {group, payment_resources},
-        {group, ip_replacement_allowed}
+        {group, payment_resources}
+        % {group, ip_replacement_allowed}
     ].
 
 -spec groups() ->
@@ -590,11 +590,10 @@ create_applepay_tokenized_payment_resource_ok_test(Config) ->
         {binbase, fun('Lookup', _) -> {ok, ?BINBASE_LOOKUP_RESULT} end}
     ], Config),
     ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
-    {ok, #{<<"paymentToolDetails">> := #{
+    {ok, #{<<"paymentToolDetails">> := Details = #{
         <<"paymentSystem">> := <<"mastercard">>,
-        <<"cardNumberMask">> := <<"411111******1234">>,
-        <<"last4">> := <<"1234">>,
-        <<"first6">> := <<"411111">>
+        <<"cardNumberMask">> := <<"************1234">>,
+        <<"last4">> := <<"1234">>
     }}} =
         capi_client_tokens:create_payment_resource(?config(context, Config), #{
             <<"paymentTool">> => #{
@@ -604,7 +603,8 @@ create_applepay_tokenized_payment_resource_ok_test(Config) ->
                 <<"paymentToken">> => #{}
             },
             <<"clientInfo">> => ClientInfo
-        }).
+        }),
+        false = maps:is_key(<<"first6">>, Details).
 
 -spec create_googlepay_tokenized_payment_resource_ok_test(_) ->
     _.
@@ -619,10 +619,10 @@ create_googlepay_tokenized_payment_resource_ok_test(Config) ->
         {binbase, fun('Lookup', _) -> {ok, ?BINBASE_LOOKUP_RESULT} end}
     ], Config),
     ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
-    {ok, #{<<"paymentToolDetails">> := #{
+    {ok, #{<<"paymentToolDetails">> := Details = #{
         <<"paymentSystem">> := <<"mastercard">>,
         <<"tokenProvider">> := <<"googlepay">>,
-        <<"cardNumberMask">> := <<"411111******1234">>,
+        <<"cardNumberMask">> := <<"************1234">>,
         <<"last4">> := <<"1234">>
     }}} =
         capi_client_tokens:create_payment_resource(?config(context, Config), #{
@@ -633,7 +633,8 @@ create_googlepay_tokenized_payment_resource_ok_test(Config) ->
                 <<"paymentToken">> => #{}
             },
             <<"clientInfo">> => ClientInfo
-        }).
+        }),
+        false = maps:is_key(<<"first6">>, Details).
 
 -spec create_googlepay_plain_payment_resource_ok_test(_) ->
     _.
