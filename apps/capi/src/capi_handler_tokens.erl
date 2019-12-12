@@ -315,9 +315,8 @@ process_tokenized_card_data_result(
         details = PaymentDetails
     }
 ) ->
-    Type = get_tokenized_card_type(PaymentData),
     {
-        {Type, BankCard#domain_BankCard{
+        {bank_card, BankCard#domain_BankCard{
             bin            = get_tokenized_bin(PaymentData),
             payment_system = PaymentSystem,
             masked_pan     = get_tokenized_pan(Last4, PaymentData),
@@ -328,15 +327,15 @@ process_tokenized_card_data_result(
         SessionID
     }.
 
-get_tokenized_card_type({tokenized_card, _}) ->
-    tokenized_bank_card;
-get_tokenized_card_type({card, _}) ->
-    bank_card.
+% get_tokenized_card_type({tokenized_card, _}) ->
+%     tokenized_bank_card;
+% get_tokenized_card_type({card, _}) ->
+%     bank_card.
 
 get_tokenized_bin({card, #paytoolprv_Card{pan = PAN}}) ->
     get_first6(PAN);
-get_tokenized_bin({tokenized_card, #paytoolprv_TokenizedCard{dpan = PAN}}) ->
-    get_first6(PAN).
+get_tokenized_bin({tokenized_card, _}) ->
+    <<>>.
 
 % Prefer to get last4 from the PAN itself rather than using the one from the adapter
 % On the other hand, getting a DPAN and no last4 from the adapter is unsupported
