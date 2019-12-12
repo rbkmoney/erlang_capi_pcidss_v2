@@ -84,8 +84,8 @@ init([]) ->
     [test_case_name()].
 all() ->
     [
-        {group, payment_resources}
-        % {group, ip_replacement_allowed}
+        {group, payment_resources},
+        {group, ip_replacement_allowed}
     ].
 
 -spec groups() ->
