@@ -3,7 +3,7 @@
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
 -include_lib("damsel/include/dmsl_payment_tool_token_thrift.hrl").
 
--export([decode_disposable_payment_resource/1]).
+-export([decode_disposable_payment_resource/2]).
 
 -export([decode_last_digits/1]).
 -export([decode_masked_pan/2]).
@@ -13,42 +13,47 @@
 
 -export_type([decode_data/0]).
 
+-type idempotent_params() :: {binary(), binary()}.
 -type decode_data() :: #{binary() => term()}.
 
-decode_payment_tool_token({bank_card, BankCard}) ->
+decode_payment_tool_token({bank_card, BankCard}, IdempotentParams) ->
     PaymentToolToken = {bank_card_payload, #ptt_BankCardPayload{
         bank_card = BankCard
     }},
-    encode_payment_tool_token(PaymentToolToken);
-decode_payment_tool_token({payment_terminal, PaymentTerminal}) ->
+    encode_payment_tool_token(PaymentToolToken, IdempotentParams);
+decode_payment_tool_token({payment_terminal, PaymentTerminal}, IdempotentParams) ->
     PaymentToolToken = {payment_terminal_payload, #ptt_PaymentTerminalPayload{
         payment_terminal = PaymentTerminal
     }},
-    encode_payment_tool_token(PaymentToolToken);
-decode_payment_tool_token({digital_wallet, DigitalWallet}) ->
+    encode_payment_tool_token(PaymentToolToken, IdempotentParams);
+decode_payment_tool_token({digital_wallet, DigitalWallet}, IdempotentParams) ->
     PaymentToolToken = {digital_wallet_payload, #ptt_DigitalWalletPayload{
         digital_wallet = DigitalWallet
     }},
-    encode_payment_tool_token(PaymentToolToken);
-decode_payment_tool_token({crypto_currency, CryptoCurrency}) ->
+    encode_payment_tool_token(PaymentToolToken, IdempotentParams);
+decode_payment_tool_token({crypto_currency, CryptoCurrency}, IdempotentParams) ->
     PaymentToolToken = {crypto_currency_payload, #ptt_CryptoCurrencyPayload{
         crypto_currency = CryptoCurrency
     }},
-    encode_payment_tool_token(PaymentToolToken);
-decode_payment_tool_token({mobile_commerce, MobileCommerce}) ->
+    encode_payment_tool_token(PaymentToolToken, IdempotentParams);
+decode_payment_tool_token({mobile_commerce, MobileCommerce}, IdempotentParams) ->
     PaymentToolToken = {mobile_commerce_payload, #ptt_MobileCommercePayload {
         mobile_commerce = MobileCommerce
     }},
-    encode_payment_tool_token(PaymentToolToken).
+    encode_payment_tool_token(PaymentToolToken, IdempotentParams).
 
-encode_payment_tool_token(PaymentToolToken) ->
+encode_payment_tool_token(PaymentToolToken, IdempotentParams) ->
+    EncryptionParams = create_encryption_params(IdempotentParams),
     ThriftType = {struct, union, {dmsl_payment_tool_token_thrift, 'PaymentToolToken'}},
-    {ok, EncodedToken} = lechiffre:encode(ThriftType, PaymentToolToken),
+    {ok, EncodedToken} = lechiffre:encode(ThriftType, PaymentToolToken, EncryptionParams),
     TokenVersion = payment_tool_token_version(),
     base64url:encode(<<TokenVersion/binary, EncodedToken/binary>>).
 
 payment_tool_token_version() ->
     <<"v1">>.
+
+create_encryption_params({_, IdempotentKey}) ->
+    #{iv => lechiffre:create_iv(IdempotentKey)}.
 
 decode_payment_tool_details({bank_card, V}) ->
     decode_bank_card_details(V, #{<<"detailsType">> => <<"PaymentToolDetailsBankCard">>});
@@ -106,14 +111,14 @@ decode_digital_wallet_details(#domain_DigitalWallet{provider = qiwi, id = ID}, V
 mask_phone_number(PhoneNumber) ->
     genlib_string:redact(PhoneNumber, <<"^\\+\\d(\\d{1,10}?)\\d{2,4}$">>).
 
--spec decode_disposable_payment_resource(capi_handler_encoder:encode_data()) ->
+-spec decode_disposable_payment_resource(capi_handler_encoder:encode_data(), idempotent_params()) ->
     decode_data().
 
-decode_disposable_payment_resource(Resource) ->
+decode_disposable_payment_resource(Resource, IdempotentParams) ->
     #domain_DisposablePaymentResource{payment_tool = PaymentTool, payment_session_id = SessionID} = Resource,
     ClientInfo = decode_client_info(Resource#domain_DisposablePaymentResource.client_info),
     #{
-        <<"paymentToolToken"  >> => decode_payment_tool_token(PaymentTool),
+        <<"paymentToolToken"  >> => decode_payment_tool_token(PaymentTool, IdempotentParams),
         <<"paymentSession"    >> => capi_handler_utils:wrap_payment_session(ClientInfo, SessionID),
         <<"paymentToolDetails">> => decode_payment_tool_details(PaymentTool),
         <<"clientInfo"        >> => ClientInfo

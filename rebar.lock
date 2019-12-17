@@ -64,7 +64,7 @@
  {<<"jsx">>,{pkg,<<"jsx">>,<<"2.8.2">>},0},
  {<<"lechiffre">>,
   {git,"git@github.com:rbkmoney/lechiffre.git",
-       {ref,"083ee3842a325bf630f26eb07a9dfcda2f6f1a44"}},
+       {ref,"bad98a7a656da68ce0d293a80454900bc7334352"}},
   0},
  {<<"metrics">>,{pkg,<<"metrics">>,<<"1.0.1">>},1},
  {<<"mimerl">>,{pkg,<<"mimerl">>,<<"1.2.0">>},1},

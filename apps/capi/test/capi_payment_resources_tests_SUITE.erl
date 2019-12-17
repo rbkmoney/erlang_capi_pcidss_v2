@@ -7,11 +7,11 @@
 -include_lib("damsel/include/dmsl_payment_processing_thrift.hrl").
 -include_lib("damsel/include/dmsl_payment_processing_errors_thrift.hrl").
 -include_lib("damsel/include/dmsl_payment_tool_provider_thrift.hrl").
+-include_lib("damsel/include/dmsl_payment_tool_token_thrift.hrl").
 -include_lib("binbase_proto/include/binbase_binbase_thrift.hrl").
 -include_lib("cds_proto/include/cds_proto_storage_thrift.hrl").
 -include_lib("capi_dummy_data.hrl").
 -include_lib("jose/include/jose_jwk.hrl").
--include_lib("damsel/include/dmsl_payment_tool_token_thrift.hrl").
 
 -export([all/0]).
 -export([groups/0]).
@@ -291,12 +291,12 @@ create_visa_payment_resource_idemp_ok_test(Config) ->
         <<"cardNumberMask">> => <<"411111******1111">>
     },
     {ok, #{
-        <<"paymentToolToken">>   := _ToolToken1,
+        <<"paymentToolToken">>   := ToolToken,
         <<"paymentSession">>     := ToolSession,
         <<"paymentToolDetails">> := PaymentToolDetails
     }} = capi_client_tokens:create_payment_resource(?config(context, Config), Params),
     {ok, #{
-        <<"paymentToolToken">> := _ToolToken2,
+        <<"paymentToolToken">> := ToolToken,
         <<"paymentSession">>   := ToolSession,
         <<"paymentToolDetails">> := PaymentToolDetails
     }} = capi_client_tokens:create_payment_resource(?config(context, Config), Params).
@@ -432,9 +432,9 @@ create_mobile_payment_resource_ok_test(Config) ->
         <<"detailsType">> => <<"PaymentToolDetailsMobileCommerce">>,
         <<"phoneNumber">> => <<"+7******1122">>
     }, maps:get(<<"paymentToolDetails">>, Res)),
-     Path = capi_ct_helper:get_keysource("keys/local/secret.key", Config),
+    Path = capi_ct_helper:get_keysource("keys/local/secret.key", Config),
     SecretKeys = get_secret_keys(Path),
-    PaymentToolToken = maps:get(<<"paymentToolToken">>, Res),
+    <<"v1", PaymentToolToken/binary>> = base64url:decode(maps:get(<<"paymentToolToken">>, Res)),
     Token = decode_token_tool(mobile_commerce, PaymentToolToken, SecretKeys),
     ?assertEqual(#domain_MobileCommerce{
         phone =  #domain_MobilePhone{
@@ -443,6 +443,22 @@ create_mobile_payment_resource_ok_test(Config) ->
         },
         operator = megafone
     }, Token).
+
+get_secret_keys(Path) ->
+    {ok, Secret} = file:read_file(Path),
+    Key = genlib_string:trim(Secret),
+    #{
+        encryption_key => {1, Key},
+        decryption_key => #{1 => Key}
+    }.
+
+decode_token_tool(mobile_commerce, EncryptionValue, SecretKeys) ->
+    ThriftType = {struct, union, {dmsl_payment_tool_token_thrift, 'PaymentToolToken'}},
+    ct:print("~p ~p", [EncryptionValue, SecretKeys]),
+    {ok, {mobile_commerce_payload, #ptt_MobileCommercePayload{
+        mobile_commerce = MobileCommerce
+    }}} = lechiffre:decode(ThriftType, EncryptionValue, SecretKeys),
+    MobileCommerce.
 
 -spec create_qw_payment_resource_ok_test(_) ->
     _.
@@ -518,49 +534,11 @@ create_qw_payment_resource_with_access_token_depends_on_external_id(Config) ->
     ResultExtId0  = capi_client_tokens:create_payment_resource(?config(context, Config), PaymentParamsExtId),
     ResultExtId1  = capi_client_tokens:create_payment_resource(?config(context, Config), PaymentParamsExtId),
     ResultNoExtId = capi_client_tokens:create_payment_resource(?config(context, Config), PaymentParamsNoExtId),
-    Path = capi_ct_helper:get_keysource("keys/local/secret.key", Config),
-    SecretKeys = get_secret_keys(Path),
     {ok, #{<<"paymentToolToken">> := TokenExtId0}}  = ResultExtId0,
     {ok, #{<<"paymentToolToken">> := TokenExtId1}}  = ResultExtId1,
     {ok, #{<<"paymentToolToken">> := TokenNoExtId}} = ResultNoExtId,
-    true = equal_encrypt_token(TokenExtId0, TokenExtId1, SecretKeys),
-    true = not_equal_encrypt_token(TokenExtId0, TokenNoExtId, SecretKeys),
-    ok.
-
-
-equal_encrypt_token(ResultExtId0, ResultExtId1, SecretKeys) ->
-    DW1 = decode_token_tool(digital_wallet, ResultExtId0, SecretKeys),
-    DW2 = decode_token_tool(digital_wallet, ResultExtId1, SecretKeys),
-    DW1 =:= DW2.
-
-not_equal_encrypt_token(ResultExtId0, ResultExtId1, SecretKeys) ->
-    DW1 = decode_token_tool(digital_wallet, ResultExtId0, SecretKeys),
-    DW2 = decode_token_tool(digital_wallet, ResultExtId1, SecretKeys),
-    DW1 =/= DW2.
-
-decode_token_tool(mobile_commerce, EncryptedToken, SecretKeys) ->
-    <<"v1", Token/binary>> = base64url:decode(EncryptedToken),
-    ThriftType = {struct, union, {dmsl_payment_tool_token_thrift, 'PaymentToolToken'}},
-    {ok, {mobile_commerce_payload, #ptt_MobileCommercePayload{
-        mobile_commerce = MobileCommerce
-    }}} = lechiffre:decode(ThriftType, Token, SecretKeys),
-    MobileCommerce;
-decode_token_tool(digital_wallet, EncryptedToken, SecretKeys) ->
-    <<"v1", Token/binary>> = base64url:decode(EncryptedToken),
-    ThriftType = {struct, union, {dmsl_payment_tool_token_thrift, 'PaymentToolToken'}},
-    {ok, {digital_wallet_payload, #ptt_DigitalWalletPayload{
-        digital_wallet = DigitalWallet
-    }}} = lechiffre:decode(ThriftType, Token, SecretKeys),
-    DigitalWallet.
-
-get_secret_keys(Path) ->
-    {ok, Key} = file:read_file(Path),
-    #{
-        encryption_key => {1, Key},
-        decryption_key => #{
-            1 => Key
-        }
-    }.
+    ?assertEqual(TokenExtId0, TokenExtId1),
+    ?assertNotEqual(TokenExtId0, TokenNoExtId).
 
 -spec create_crypto_payment_resource_ok_test(_) ->
     _.
@@ -604,7 +582,7 @@ create_applepay_tokenized_payment_resource_ok_test(Config) ->
             },
             <<"clientInfo">> => ClientInfo
         }),
-        false = maps:is_key(<<"first6">>, Details).
+    false = maps:is_key(<<"first6">>, Details).
 
 -spec create_googlepay_tokenized_payment_resource_ok_test(_) ->
     _.
@@ -634,7 +612,7 @@ create_googlepay_tokenized_payment_resource_ok_test(Config) ->
             },
             <<"clientInfo">> => ClientInfo
         }),
-        false = maps:is_key(<<"first6">>, Details).
+    false = maps:is_key(<<"first6">>, Details).
 
 -spec create_googlepay_plain_payment_resource_ok_test(_) ->
     _.
