@@ -31,7 +31,7 @@ init([]) ->
     ok           = uac:configure(UacConf),
     {ok, {
         {one_for_all, 0, 1},
-            [LechiffreSpec] ++ LogicHandlerSpecs ++ [SwaggerSpec]
+        [LechiffreSpec] ++ LogicHandlerSpecs ++ [SwaggerSpec]
     }}.
 
 -spec get_logic_handler_info() -> {Handler :: atom(), [Spec :: supervisor:child_spec()] | []} .

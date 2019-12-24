@@ -49,7 +49,9 @@ process_request('CreatePaymentResource' = OperationID, Req, Context) ->
                 payment_session_id = PaymentSessionID,
                 client_info = capi_handler_encoder:encode_client_info(ClientInfo)
             },
-        {ok, {201, #{}, capi_handler_decoder:decode_disposable_payment_resource(PaymentResource, IdempotentParams)}}
+        PaymentToolToken = capi_handler_encoder:encode_payment_tool_token(PaymentTool),
+        EncryptedToken = capi_crypto:encrypt_payment_tool_token(IdempotentKey, PaymentToolToken),
+        {ok, {201, #{}, capi_handler_decoder:decode_disposable_payment_resource(PaymentResource, EncryptedToken)}}
     catch
         Result -> Result
     end;
@@ -326,11 +328,6 @@ process_tokenized_card_data_result(
         }},
         SessionID
     }.
-
-% get_tokenized_card_type({tokenized_card, _}) ->
-%     tokenized_bank_card;
-% get_tokenized_card_type({card, _}) ->
-%     bank_card.
 
 get_tokenized_bin({card, #paytoolprv_Card{pan = PAN}}) ->
     get_first6(PAN);
