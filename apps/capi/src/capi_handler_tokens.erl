@@ -8,7 +8,7 @@
 
 -behaviour(capi_handler).
 -export([process_request/3]).
--import(capi_handler_utils, [logic_error/2]).
+-import(capi_handler_utils, [logic_error/2, validation_error/1]).
 
 -define(CAPI_NS, <<"com.rbkmoney.capi">>).
 
@@ -92,8 +92,13 @@ validate_ip(IP) ->
 process_card_data(Data, IdempotentParams, Context) ->
     SessionData = encode_session_data(Data),
     CardData = encode_card_data(Data),
-    Result = put_card_data_to_cds(CardData, SessionData, IdempotentParams, Context),
-    process_card_data_result(Result, CardData).
+    case capi_card_data:validate(CardData, SessionData) of
+        ok ->
+            Result = put_card_data_to_cds(CardData, SessionData, IdempotentParams, Context),
+            process_card_data_result(Result, CardData);
+        {error, Error} ->
+            throw({ok, validation_error(Error)})
+    end.
 
 process_card_data_result(
     {{bank_card, BankCard}, SessionID},
@@ -255,8 +260,13 @@ process_tokenized_card_data(Data, IdempotentParams, Context) ->
     end,
     CardData = encode_tokenized_card_data(UnwrappedPaymentTool),
     SessionData = encode_tokenized_session_data(UnwrappedPaymentTool),
-    Result = put_card_data_to_cds(CardData, SessionData, IdempotentParams, Context),
-    process_tokenized_card_data_result(Result, UnwrappedPaymentTool).
+    case capi_card_data:validate(CardData, SessionData) of
+        ok ->
+            Result = put_card_data_to_cds(CardData, SessionData, IdempotentParams, Context),
+            process_tokenized_card_data_result(Result, UnwrappedPaymentTool);
+        {error, Error} ->
+            throw({ok, validation_error(Error)})
+    end.
 
 get_token_provider_service_name(Data) ->
     case Data of
