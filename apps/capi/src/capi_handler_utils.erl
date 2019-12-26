@@ -43,7 +43,7 @@ logic_error(Code, Message) ->
     create_error_resp(400, Data).
 
 -spec validation_error
-    (capi_card_data:reason()) -> response().
+    (capi_bankcard:reason()) -> response().
 
 validation_error(unrecognized) ->
     Data = #{

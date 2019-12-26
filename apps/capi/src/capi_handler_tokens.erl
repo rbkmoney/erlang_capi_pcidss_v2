@@ -93,7 +93,8 @@ process_card_data(Data, IdempotentParams, Context) ->
     SessionData = encode_session_data(Data),
     CardData = encode_card_data(Data),
     BankInfo = get_bank_info(CardData#'CardData'.pan, Context),
-    case capi_card_data:validate(CardData, SessionData, build_env(BankInfo)) of
+    PaymentSystem = capi_bankcard:payment_system(BankInfo),
+    case capi_bankcard:validate(CardData, SessionData, PaymentSystem) of
         ok ->
             Result = put_card_data_to_cds(CardData, SessionData, IdempotentParams, BankInfo, Context),
             process_card_data_result(Result, CardData);
@@ -257,7 +258,8 @@ process_tokenized_card_data(Data, IdempotentParams, Context) ->
     CardData = encode_tokenized_card_data(UnwrappedPaymentTool),
     SessionData = encode_tokenized_session_data(UnwrappedPaymentTool),
     BankInfo = get_bank_info(CardData#'CardData'.pan, Context),
-    case capi_card_data:validate(CardData, SessionData, build_env(BankInfo)) of
+    PaymentSystem = capi_bankcard:payment_system(BankInfo),
+    case capi_bankcard:validate(CardData, SessionData, PaymentSystem) of
         ok ->
             Result = put_card_data_to_cds(CardData, SessionData, IdempotentParams, BankInfo, Context),
             process_tokenized_card_data_result(Result, UnwrappedPaymentTool);
@@ -458,9 +460,3 @@ get_bank_info(CardDataPan, Context) ->
         {error, _Reason} ->
             throw({ok, logic_error(invalidRequest, <<"Unsupported card">>)})
     end.
-
-build_env(#{payment_system := PaymentSystem}) ->
-    #{
-        now => calendar:universal_time(),
-        payment_system => PaymentSystem
-    }.
