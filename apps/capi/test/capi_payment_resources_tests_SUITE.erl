@@ -432,7 +432,7 @@ create_mobile_payment_resource_ok_test(Config) ->
         <<"detailsType">> => <<"PaymentToolDetailsMobileCommerce">>,
         <<"phoneNumber">> => <<"+7******1122">>
     }, maps:get(<<"paymentToolDetails">>, Res)),
-    <<"v1", PaymentToolToken/binary>> = maps:get(<<"paymentToolToken">>, Res),
+    <<"v1/", PaymentToolToken/binary>> = maps:get(<<"paymentToolToken">>, Res),
     Token = decode_token_tool(mobile_commerce, PaymentToolToken),
     ?assertEqual(#domain_MobileCommerce{
         phone =  #domain_MobilePhone{

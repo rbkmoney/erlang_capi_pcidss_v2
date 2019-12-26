@@ -20,7 +20,7 @@ create_encrypted_payment_tool_token(IdempotentKey, PaymentTool) ->
     ThriftType = {struct, union, {dmsl_payment_tool_token_thrift, 'PaymentToolToken'}},
     {ok, EncodedToken} = lechiffre:encode(ThriftType, PaymentToolToken, EncryptionParams),
     TokenVersion = payment_tool_token_version(),
-    <<TokenVersion/binary, EncodedToken/binary>>.
+    <<TokenVersion/binary, "/", EncodedToken/binary>>.
 
 %% Internal
 
