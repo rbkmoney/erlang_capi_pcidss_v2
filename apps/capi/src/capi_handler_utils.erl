@@ -59,7 +59,7 @@ validation_error({invalid, K, C}) ->
 validation_msg(expiration, _Key) ->
     <<"Invalid expiration date">>;
 validation_msg(luhn, Key) ->
-    <<"Invalid luhn for ", (key_to_binary(Key))/binary>>;
+    <<"Invalid ", (key_to_binary(Key))/binary, " checksum">>;
 validation_msg({length, _}, Key) ->
     <<"Invalid ", (key_to_binary(Key))/binary, " length">>.
 
