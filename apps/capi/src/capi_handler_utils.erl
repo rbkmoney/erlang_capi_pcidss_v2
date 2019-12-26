@@ -59,9 +59,18 @@ validation_error({invalid, K, C}) ->
 validation_msg(expiration, _Key) ->
     <<"Invalid expiration date">>;
 validation_msg(luhn, Key) ->
-    <<"Invalid luhn for ", (genlib:to_binary(Key))/binary>>;
+    <<"Invalid luhn for ", (key_to_binary(Key))/binary>>;
 validation_msg({length, _}, Key) ->
-    <<"Invalid length for ", (genlib:to_binary(Key))/binary>>.
+    <<"Invalid length for ", (key_to_binary(Key))/binary>>.
+
+key_to_binary(cardnumber) ->
+    <<"cardNumber">>;
+key_to_binary(exp_date) ->
+    <<"expDate">>;
+key_to_binary(cardholder) ->
+    <<"cardHolder">>;
+key_to_binary(cvv) ->
+    <<"cvv">>.
 
 create_error_resp(Code, Data) ->
     create_error_resp(Code, #{}, Data).

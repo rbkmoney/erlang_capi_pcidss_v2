@@ -26,6 +26,8 @@
 -export([
     create_visa_payment_resource_ok_test/1,
     create_visa_with_empty_cvv_ok_test/1,
+    create_visa_with_wrong_cvv_test/1,
+    create_visa_with_wrong_cardnumber_test/1,
     create_visa_payment_resource_idemp_ok_test/1,
     create_visa_payment_resource_idemp_fail_test/1,
     create_nspkmir_payment_resource_ok_test/1,
@@ -95,6 +97,8 @@ groups() ->
             [
                 create_visa_payment_resource_ok_test,
                 create_visa_with_empty_cvv_ok_test,
+                create_visa_with_wrong_cvv_test,
+                create_visa_with_wrong_cardnumber_test,
                 create_visa_payment_resource_idemp_ok_test,
                 create_visa_payment_resource_idemp_fail_test,
                 create_nspkmir_payment_resource_ok_test,
@@ -247,6 +251,50 @@ create_visa_with_empty_cvv_ok_test(Config) ->
             <<"cardNumber">> => <<"4111111111111111">>,
             <<"cardHolder">> => <<"Alexander Weinerschnitzel">>,
             <<"expDate">> => <<"08/27">>
+        },
+        <<"clientInfo">> => ClientInfo
+    }).
+
+-spec create_visa_with_wrong_cvv_test(_) ->
+    _.
+create_visa_with_wrong_cvv_test(Config) ->
+    capi_ct_helper:mock_services([
+        {bender, fun('GenerateID', _) -> {ok, capi_ct_helper_bender:get_result(<<"bender_key">>)} end}
+    ], Config),
+    ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
+    {error,
+        {400,
+            #{<<"code">> := <<"invalidRequest">>,
+              <<"message">> := <<"Invalid length for cvv">>}}}
+        = capi_client_tokens:create_payment_resource(?config(context, Config), #{
+        <<"paymentTool">> => #{
+            <<"paymentToolType">> => <<"CardData">>,
+            <<"cardNumber">> => <<"4111111111111111">>,
+            <<"cardHolder">> => <<"Alexander Weinerschnitzel">>,
+            <<"expDate">> => <<"08/27">>,
+            <<"cvv">> => <<"2020">>
+        },
+        <<"clientInfo">> => ClientInfo
+    }).
+
+-spec create_visa_with_wrong_cardnumber_test(_) ->
+    _.
+create_visa_with_wrong_cardnumber_test(Config) ->
+    capi_ct_helper:mock_services([
+        {bender, fun('GenerateID', _) -> {ok, capi_ct_helper_bender:get_result(<<"bender_key">>)} end}
+    ], Config),
+    ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
+    {error,
+        {400,
+            #{<<"code">> := <<"invalidRequest">>,
+              <<"message">> := <<"Invalid luhn for cardNumber">>}}}
+        = capi_client_tokens:create_payment_resource(?config(context, Config), #{
+        <<"paymentTool">> => #{
+            <<"paymentToolType">> => <<"CardData">>,
+            <<"cardNumber">> => <<"4111111211111111">>,
+            <<"cardHolder">> => <<"Alexander Weinerschnitzel">>,
+            <<"expDate">> => <<"08/27">>,
+            <<"cvv">> => <<"202">>
         },
         <<"clientInfo">> => ClientInfo
     }).
