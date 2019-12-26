@@ -266,7 +266,7 @@ create_visa_with_wrong_cvv_test(Config) ->
     {error,
         {400,
             #{<<"code">> := <<"invalidRequest">>,
-              <<"message">> := <<"Invalid length for cvv">>}}}
+              <<"message">> := <<"Invalid cvv length">>}}}
         = capi_client_tokens:create_payment_resource(?config(context, Config), #{
         <<"paymentTool">> => #{
             <<"paymentToolType">> => <<"CardData">>,
@@ -289,7 +289,7 @@ create_visa_with_wrong_cardnumber_test(Config) ->
     {error,
         {400,
             #{<<"code">> := <<"invalidRequest">>,
-              <<"message">> := <<"Invalid luhn for cardNumber">>}}}
+              <<"message">> := <<"Invalid cardNumber checksum">>}}}
         = capi_client_tokens:create_payment_resource(?config(context, Config), #{
         <<"paymentTool">> => #{
             <<"paymentToolType">> => <<"CardData">>,
