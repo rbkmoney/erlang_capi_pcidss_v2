@@ -432,10 +432,8 @@ create_mobile_payment_resource_ok_test(Config) ->
         <<"detailsType">> => <<"PaymentToolDetailsMobileCommerce">>,
         <<"phoneNumber">> => <<"+7******1122">>
     }, maps:get(<<"paymentToolDetails">>, Res)),
-    Path = capi_ct_helper:get_keysource("keys/local/secret.key", Config),
-    SecretKeys = get_secret_keys(Path),
-    <<"v1", PaymentToolToken/binary>> = base64url:decode(maps:get(<<"paymentToolToken">>, Res)),
-    Token = decode_token_tool(mobile_commerce, PaymentToolToken, SecretKeys),
+    <<"v1", PaymentToolToken/binary>> = maps:get(<<"paymentToolToken">>, Res),
+    Token = decode_token_tool(mobile_commerce, PaymentToolToken),
     ?assertEqual(#domain_MobileCommerce{
         phone =  #domain_MobilePhone{
             cc = <<"7">>,
@@ -444,20 +442,11 @@ create_mobile_payment_resource_ok_test(Config) ->
         operator = megafone
     }, Token).
 
-get_secret_keys(Path) ->
-    {ok, Secret} = file:read_file(Path),
-    Key = genlib_string:trim(Secret),
-    #{
-        encryption_key => {1, Key},
-        decryption_key => #{1 => Key}
-    }.
-
-decode_token_tool(mobile_commerce, EncryptionValue, SecretKeys) ->
+decode_token_tool(mobile_commerce, EncryptionValue) ->
     ThriftType = {struct, union, {dmsl_payment_tool_token_thrift, 'PaymentToolToken'}},
-    ct:print("~p ~p", [EncryptionValue, SecretKeys]),
     {ok, {mobile_commerce_payload, #ptt_MobileCommercePayload{
         mobile_commerce = MobileCommerce
-    }}} = lechiffre:decode(ThriftType, EncryptionValue, SecretKeys),
+    }}} = lechiffre:decode(ThriftType, EncryptionValue),
     MobileCommerce.
 
 -spec create_qw_payment_resource_ok_test(_) ->
