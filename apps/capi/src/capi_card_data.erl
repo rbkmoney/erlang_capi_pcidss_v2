@@ -18,11 +18,14 @@
 
 -include_lib("damsel/include/dmsl_cds_thrift.hrl").
 
--export([validate/1]).
--export([validate/2]).
+-export([validate/3]).
 
 -type cardholder_data() :: dmsl_cds_thrift:'CardData'().
 -type session_data() :: dmsl_cds_thrift:'SessionData'().
+-type env() :: #{
+    now := calendar:datetime(),
+    payment_system := atom()
+}.
 
 -export_type([reason/0]).
 
@@ -30,29 +33,13 @@
 
 -type reason() :: unrecognized |{invalid, cardnumber | cvv | exp_date, check()}.
 
--spec validate(cardholder_data()) ->
+-spec validate(cardholder_data(), session_data() | undefined, Env :: env()) ->
     ok | {error, reason()}.
 
-validate(CardData) ->
-    validate(CardData, undefined, #{now => calendar:universal_time()}).
-
--spec validate(cardholder_data(), session_data() | undefined) ->
-    ok| {error, reason()}.
-
-validate(CardData, SessionData) ->
-    validate(CardData, SessionData, #{now => calendar:universal_time()}).
-
--spec validate(cardholder_data(), session_data() | undefined, Env :: #{now := calendar:datetime()}) ->
-    ok | {error, reason()}.
-
-validate(CardData = #'CardData'{pan = CardNumber}, SessionData, Env) ->
-    case detect_payment_system(CardNumber) of
-        {ok, PaymentSystem} ->
-            #{PaymentSystem := Ruleset} = get_payment_system_assertions(),
-            validate_card_data(merge_data(CardData, SessionData), Ruleset, Env);
-        {error, Reason} ->
-            {error, Reason}
-    end.
+validate(CardData, SessionData, Env) ->
+    PaymentSystem = maps:get(payment_system, Env),
+    #{PaymentSystem := Ruleset} = get_payment_system_assertions(),
+    validate_card_data(merge_data(CardData, SessionData), Ruleset, Env).
 
 merge_data(CardData, undefined) ->
     convert_card_data(CardData);
@@ -65,20 +52,6 @@ get_cvv_from_session_data({card_security_code, AuthData}) ->
     AuthData#'CardSecurityCode'.value;
 get_cvv_from_session_data(_) ->
     undefined.
-
-detect_payment_system(CardNumber) ->
-    detect_payment_system(byte_size(CardNumber), CardNumber).
-
-detect_payment_system(Size, CardNumber) when Size > 0 ->
-    <<Pre:Size/binary, _/binary>> = CardNumber,
-    case get_inn_map() of
-        #{Pre := PaymentSystem} ->
-            {ok, PaymentSystem};
-        #{} ->
-            detect_payment_system(Size - 1, CardNumber)
-    end;
-detect_payment_system(0, _) ->
-    {error, unrecognized}.
 
 %%
 
@@ -227,91 +200,6 @@ get_payment_system_assertions() ->
         }
 
     }.
-
-get_inn_map() ->
-    #{
-        <<"4026">> => visaelectron,
-        <<"417500">> => visaelectron,
-        <<"4405">> => visaelectron,
-        <<"4508">> => visaelectron,
-        <<"4844">> => visaelectron,
-        <<"4913">> => visaelectron,
-        <<"4917">> => visaelectron,
-
-        %% Maestro Global Rules
-        %% https://www.mastercard.com/hr/merchants/_assets/Maestro_rules.pdf
-        %%
-        %% 6.2.1.3 Primary Account Number (PAN)
-        %%
-        %% The IIN appears in the first six (6) digits of the PAN and must be assigned
-        %% by the ISO Registration Authority, and must be unique. This prefix will
-        %% start with 50XXXX, 560000 through 589999, or 6XXXXX, but not 59XXXX.
-        <<"50">> => maestro,
-        <<"56">> => maestro,
-        <<"57">> => maestro,
-        <<"58">> => maestro,
-        <<"6">> => maestro,
-
-        <<"600">> => forbrugsforeningen,
-
-        <<"5019">> => dankort,
-
-        <<"4">> => visa,
-
-        %% Mastercard Rules
-        %% https://www.mastercard.us/content/dam/mccom/global/documents/mastercard-rules.pdf
-        %%
-        %% Any type of account (credit, debit, prepaid, commercial, etc.) identified
-        %% as a Mastercard Account with a primary account number (PAN) that begins with
-        %% a BIN in the range of 222100 to 272099 or 510000 to 559999.
-        <<"51">> => mastercard,
-        <<"52">> => mastercard,
-        <<"53">> => mastercard,
-        <<"54">> => mastercard,
-        <<"55">> => mastercard,
-        <<"2221">> => mastercard,
-        <<"2222">> => mastercard,
-        <<"2223">> => mastercard,
-        <<"2224">> => mastercard,
-        <<"2225">> => mastercard,
-        <<"2226">> => mastercard,
-        <<"2227">> => mastercard,
-        <<"2228">> => mastercard,
-        <<"2229">> => mastercard,
-        <<"23">> => mastercard,
-        <<"24">> => mastercard,
-        <<"25">> => mastercard,
-        <<"26">> => mastercard,
-        <<"270">> => mastercard,
-        <<"271">> => mastercard,
-        <<"2720">> => mastercard,
-        <<"500000">> => mastercard, %% needed for tinkoff test card
-
-        <<"34">> => amex,
-        <<"37">> => amex,
-
-        <<"30">> => dinersclub,
-        <<"36">> => dinersclub,
-        <<"38">> => dinersclub,
-        <<"39">> => dinersclub,
-
-        <<"60">> => discover,
-        <<"64">> => discover,
-        <<"65">> => discover,
-        <<"622">> => discover,
-
-        <<"62">> => unionpay,
-        <<"88">> => unionpay,
-
-        <<"35">> => jcb,
-
-        <<"2200">> => nspkmir,
-        <<"2201">> => nspkmir,
-        <<"2202">> => nspkmir,
-        <<"2203">> => nspkmir,
-        <<"2204">> => nspkmir
-    }.
-
 
 convert_card_data(CardData) ->
     #'CardData' {
