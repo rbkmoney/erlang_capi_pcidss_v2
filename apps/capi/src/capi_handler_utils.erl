@@ -61,7 +61,7 @@ validation_msg(expiration, _Key) ->
 validation_msg(luhn, Key) ->
     <<"Invalid luhn for ", (key_to_binary(Key))/binary>>;
 validation_msg({length, _}, Key) ->
-    <<"Invalid length for ", (key_to_binary(Key))/binary>>.
+    <<"Invalid ", (key_to_binary(Key))/binary, " length">>.
 
 key_to_binary(cardnumber) ->
     <<"cardNumber">>;
