@@ -301,29 +301,32 @@ prepare_client_ip(Context) ->
 process_card_data(Data, IdempotentKey, ReqCtx) ->
     PutCardData = encode_card_data(Data),
     SessionData = encode_session_data(Data),
-    put_card_data_to_cds(PutCardData, SessionData, IdempotentKey, ReqCtx).
+    BankInfo = get_bank_info(PutCardData#cds_PutCardData.pan, ReqCtx),
+    PaymentSystem = capi_bankcard:payment_system(BankInfo),
+    case capi_bankcard:validate(PutCardData, SessionData, PaymentSystem) of
+        ok ->
+            put_card_data_to_cds(PutCardData, SessionData, IdempotentKey, BankInfo, ReqCtx);
+        {error, Error} ->
+            throw({ok, validation_error(Error)})
+    end.
 
-put_card_to_cds(PutCardData, ReqCtx) ->
-    case capi_bankcard:lookup_bank_info(PutCardData#cds_PutCardData.pan, ReqCtx) of
-        {ok, BankInfo} ->
-            case service_call(cds_storage, 'PutCard', [PutCardData], ReqCtx) of
-                {ok, #cds_PutCardResult{bank_card = BankCard}} ->
-                    ExpDate = PutCardData#cds_PutCardData.exp_date,
-                    CardholderName = PutCardData#cds_PutCardData.cardholder_name,
-                    {bank_card, expand_card_info(BankCard, BankInfo, ExpDate, CardholderName)};
-                {exception, #cds_InvalidCardData{}} ->
-                    throw({ok, {400, #{}, logic_error(invalidRequest, <<"Card data is invalid">>)}})
-            end;
-        {error, _Reason} ->
-            throw({ok, {400, #{}, logic_error(invalidRequest, <<"Unsupported card">>)}})
+
+put_card_to_cds(PutCardData, BankInfo, ReqCtx) ->
+    case service_call(cds_storage, 'PutCard', [PutCardData], ReqCtx) of
+        {ok, #cds_PutCardResult{bank_card = BankCard}} ->
+            ExpDate = PutCardData#cds_PutCardData.exp_date,
+            CardholderName = PutCardData#cds_PutCardData.cardholder_name,
+            {bank_card, expand_card_info(BankCard, BankInfo, ExpDate, CardholderName)};
+        {exception, #cds_InvalidCardData{}} ->
+            throw({ok, {400, #{}, logic_error(invalidRequest, <<"Card data is invalid">>)}})
     end.
 
 put_session_to_cds(SessionID, SessionData, ReqCtx) ->
     {ok, ok} = service_call(cds_storage, 'PutSession', [SessionID, SessionData], ReqCtx),
     ok.
 
-put_card_data_to_cds(PutCardData, SessionData, IdempotentKey, ReqCtx) ->
-    BankCard = put_card_to_cds(PutCardData, ReqCtx),
+put_card_data_to_cds(PutCardData, SessionData, IdempotentKey, BankInfo, ReqCtx) ->
+    BankCard = put_card_to_cds(PutCardData, BankInfo, ReqCtx),
     {bank_card, #domain_BankCard{token = Token}} = BankCard,
     RandomID = gen_random_id(),
     Hash = erlang:phash2(Token),
@@ -406,15 +409,25 @@ process_tokenized_card_data(Data, IdempotentKey, ReqCtx) ->
         {exception, #'InvalidRequest'{}} ->
             throw({ok, {400, #{}, logic_error(invalidRequest, <<"Tokenized card data is invalid">>)}})
     end,
-    process_put_card_data_result(
-        put_card_data_to_cds(
-            encode_tokenized_card_data(UnwrappedPaymentTool),
-            encode_tokenized_session_data(UnwrappedPaymentTool),
-            IdempotentKey,
-            ReqCtx
-        ),
-        UnwrappedPaymentTool
-    ).
+    CardData = encode_tokenized_card_data(UnwrappedPaymentTool),
+    SessionData = encode_tokenized_session_data(UnwrappedPaymentTool),
+    BankInfo = get_bank_info(CardData#cds_PutCardData.pan, ReqCtx),
+    PaymentSystem = capi_bankcard:payment_system(BankInfo),
+    case capi_bankcard:validate(CardData, SessionData, PaymentSystem) of
+        ok ->
+            process_put_card_data_result(
+                put_card_data_to_cds(
+                    CardData,
+                    SessionData,
+                    IdempotentKey,
+                    BankInfo,
+                    ReqCtx
+                ),
+                UnwrappedPaymentTool
+            );
+        {error, Error} ->
+            throw({ok, validation_error(Error)})
+    end.
 
 process_crypto_wallet_data(Data, _ReqCtx) ->
     #{<<"cryptoCurrency">> := CryptoCurrency} = Data,
@@ -589,3 +602,44 @@ convert_crypto_currency_to_swag(CryptoCurrency) when is_atom(CryptoCurrency) ->
 gen_random_id() ->
     Random = crypto:strong_rand_bytes(16),
     genlib_format:format_int_base(binary:decode_unsigned(Random), 62).
+
+get_bank_info(CardDataPan, Context) ->
+    case capi_bankcard:lookup_bank_info(CardDataPan, Context) of
+        {ok, BankInfo} ->
+            BankInfo;
+        {error, _Reason} ->
+            throw({ok, logic_error(invalidRequest, <<"Unsupported card">>)})
+    end.
+
+-spec validation_error
+    (capi_bankcard:reason()) -> swag_server:response().
+
+validation_error(unrecognized) ->
+    Data = #{
+        <<"code">> => <<"invalidRequest">>,
+        <<"message">> => <<"Unrecognized bank card issuer">>},
+    create_error_resp(400, Data);
+validation_error({invalid, K, C}) ->
+    Data = #{
+        <<"code">> => <<"invalidRequest">>,
+        <<"message">> => validation_msg(C, K)},
+    create_error_resp(400, Data).
+
+validation_msg(expiration, _Key) ->
+    <<"Invalid expiration date">>;
+validation_msg(luhn, Key) ->
+    <<"Invalid ", (key_to_binary(Key))/binary, " checksum">>;
+validation_msg({length, _}, Key) ->
+    <<"Invalid ", (key_to_binary(Key))/binary, " length">>.
+
+key_to_binary(cardnumber) ->
+    <<"cardNumber">>;
+key_to_binary(exp_date) ->
+    <<"expDate">>;
+key_to_binary(cvv) ->
+    <<"cvv">>.
+
+create_error_resp(Code, Data) ->
+    create_error_resp(Code, #{}, Data).
+create_error_resp(Code, Headers, Data) ->
+    {Code, Headers, Data}.
