@@ -230,9 +230,9 @@ check_luhn(<<N, Rest/binary>>, Sum) ->
 % config
 
 -type check() ::
-{length, [pos_integer() | {range, pos_integer(), pos_integer()}]} |
-luhn |
-expiration.
+    {length, [pos_integer() | {range, pos_integer(), pos_integer()}]} |
+    luhn |
+    expiration.
 
 get_payment_system_assertions() ->
     #{
