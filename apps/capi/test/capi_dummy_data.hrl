@@ -4,8 +4,8 @@
 
 -define(BANK_CARD, #cds_BankCard{
     token = ?STRING,
-    bin = <<"411111">>,
-    last_digits = <<"1111">>
+    bin = <<"532130">>,
+    last_digits = <<"7892">>
 }).
 
 -define(BINBASE_LOOKUP_RESULT, ?BINBASE_LOOKUP_RESULT(<<"MASTERCARD">>)).
@@ -23,10 +23,10 @@
     ?UNWRAPPED_PAYMENT_TOOL(
         Details,
         {tokenized_card, #paytoolprv_TokenizedCard{
-            dpan = ?STRING,
+            dpan = <<"5321301234567892">>,
             exp_date = #paytoolprv_ExpDate{
                 month = 10,
-                year = 2018
+                year = 2028
             },
             auth_data = {auth_3ds, #paytoolprv_Auth3DS{
                 cryptogram = ?STRING,

@@ -185,12 +185,12 @@ create_nspkmir_payment_resource_ok_test(Config) ->
         {cds_storage, fun
             ('PutSession', _) -> {ok, ok};
             ('PutCard', [
-                #'cds_PutCardData'{pan = <<"22001111", _:6/binary, Mask:2/binary>>}
+                #'cds_PutCardData'{pan = <<"22022002", _:6/binary, Mask:2/binary>>}
             ]) ->
                 {ok, #'cds_PutCardResult'{
                     bank_card = #cds_BankCard{
                         token = ?STRING,
-                        bin = <<"22001111">>,
+                        bin = <<"22022002">>,
                         last_digits = Mask
                     }
                 }}
@@ -202,13 +202,13 @@ create_nspkmir_payment_resource_ok_test(Config) ->
     {ok, #{<<"paymentToolDetails">> := #{
         <<"detailsType">> := <<"PaymentToolDetailsBankCard">>,
         <<"paymentSystem">> := <<"nspkmir">>,
-        <<"cardNumberMask">> := <<"22001111******11">>,
-        <<"lastDigits">> := <<"11">>,
-        <<"bin">> := <<"22001111">>
+        <<"cardNumberMask">> := <<"22022002******54">>,
+        <<"lastDigits">> := <<"54">>,
+        <<"bin">> := <<"22022002">>
     }}} = capi_client_tokens:create_payment_resource(?config(context, Config), #{
         <<"paymentTool">> => #{
             <<"paymentToolType">> => <<"CardData">>,
-            <<"cardNumber">> => <<"2200111111111111">>,
+            <<"cardNumber">> => <<"2202200223948454">>,
             <<"cardHolder">> => <<"Alexander Weinerschnitzel">>,
             <<"expDate">> => <<"08/27">>,
             <<"cvv">> => <<"232">>
@@ -323,8 +323,8 @@ create_googlepay_plain_payment_resource_ok_test(Config) ->
                 {ok, ?UNWRAPPED_PAYMENT_TOOL(
                     ?GOOGLE_PAY_DETAILS,
                     {card, #paytoolprv_Card{
-                        pan = <<"1234567890123456">>,
-                        exp_date = #paytoolprv_ExpDate{month = 10, year = 2018}
+                        pan = <<"5321301234567892">>,
+                        exp_date = #paytoolprv_ExpDate{month = 10, year = 2028}
                     }}
                 )}
             end
