@@ -10,6 +10,7 @@
 -export_type([encrypted_token/0]).
 
 -export([create_encrypted_payment_tool_token/2]).
+-export([decrypt_payment_tool_token/1]).
 
 -spec create_encrypted_payment_tool_token(binary(), payment_tool()) ->
     encrypted_token().
@@ -21,6 +22,17 @@ create_encrypted_payment_tool_token(IdempotentKey, PaymentTool) ->
     {ok, EncodedToken} = lechiffre:encode(ThriftType, PaymentToolToken, EncryptionParams),
     TokenVersion = payment_tool_token_version(),
     <<TokenVersion/binary, "/", EncodedToken/binary>>.
+
+-spec decrypt_payment_tool_token(encrypted_token()) ->
+    {ok, payment_tool_token()} |
+    {error, lechiffre:decoding_error()}.
+
+decrypt_payment_tool_token(EncryptedToken) ->
+    Ver = payment_tool_token_version(),
+    Size = byte_size(Ver),
+    ThriftType = {struct, union, {dmsl_payment_tool_token_thrift, 'PaymentToolToken'}},
+    <<Ver:Size/binary, "/", EncryptionValue/binary>> = EncryptedToken,
+    lechiffre:decode(ThriftType, EncryptionValue).
 
 %% Internal
 

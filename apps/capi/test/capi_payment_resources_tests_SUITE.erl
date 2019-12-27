@@ -432,22 +432,19 @@ create_mobile_payment_resource_ok_test(Config) ->
         <<"detailsType">> => <<"PaymentToolDetailsMobileCommerce">>,
         <<"phoneNumber">> => <<"+7******1122">>
     }, maps:get(<<"paymentToolDetails">>, Res)),
-    <<"v1/", PaymentToolToken/binary>> = maps:get(<<"paymentToolToken">>, Res),
-    Token = decode_token_tool(mobile_commerce, PaymentToolToken),
+    PaymentToolToken = maps:get(<<"paymentToolToken">>, Res),
+    {ok, {mobile_commerce_payload, #ptt_MobileCommercePayload{
+        mobile_commerce = MobileCommerce
+    }}} = capi_crypto:decrypt_payment_tool_token(PaymentToolToken),
+
     ?assertEqual(#domain_MobileCommerce{
         phone =  #domain_MobilePhone{
             cc = <<"7">>,
             ctn = <<"9210001122">>
         },
         operator = megafone
-    }, Token).
+    }, MobileCommerce).
 
-decode_token_tool(mobile_commerce, EncryptionValue) ->
-    ThriftType = {struct, union, {dmsl_payment_tool_token_thrift, 'PaymentToolToken'}},
-    {ok, {mobile_commerce_payload, #ptt_MobileCommercePayload{
-        mobile_commerce = MobileCommerce
-    }}} = lechiffre:decode(ThriftType, EncryptionValue),
-    MobileCommerce.
 
 -spec create_qw_payment_resource_ok_test(_) ->
     _.
