@@ -170,9 +170,7 @@ create_visa_payment_resource_ok_test(Config) ->
         },
         <<"clientInfo">> => ClientInfo
     }),
-    {ok, {bank_card_payload, #ptt_BankCardPayload{
-        bank_card = BankCard
-    }}} = capi_crypto:decrypt_payment_tool_token(PaymentToolToken),
+    {ok, {bank_card, BankCard}} = capi_crypto:decrypt_payment_tool_token(PaymentToolToken),
     CardHolder = BankCard#domain_BankCard.cardholder_name.
 
 -spec create_nspkmir_payment_resource_ok_test(_) ->
