@@ -66,7 +66,7 @@
  {<<"lager">>,{pkg,<<"lager">>,<<"3.2.4">>},0},
  {<<"lechiffre">>,
   {git,"git@github.com:rbkmoney/lechiffre.git",
-       {ref,"083ee3842a325bf630f26eb07a9dfcda2f6f1a44"}},
+       {ref,"da3ca720b1f226a0e4811d4b205a6085ff31b150"}},
   0},
  {<<"metrics">>,{pkg,<<"metrics">>,<<"1.0.1">>},1},
  {<<"mimerl">>,{pkg,<<"mimerl">>,<<"1.2.0">>},1},
