@@ -114,11 +114,13 @@ process_request('CreatePaymentResource' = OperationID, Req, Context, ReqCtx) ->
             #{<<"paymentToolType">> := <<"CryptoWalletData">>} ->
                 process_crypto_wallet_data(Data, ReqCtx)
         end,
-        {ok, {201, #{}, decode_disposable_payment_resource(#domain_DisposablePaymentResource{
+        PaymentResource = #domain_DisposablePaymentResource{
             payment_tool = PaymentTool,
             payment_session_id = PaymentSessionID,
             client_info = encode_client_info(ClientInfo)
-        })}}
+        },
+        EncryptedToken = capi_crypto:create_encrypted_payment_tool_token(IdempotentKey, PaymentTool),
+        {ok, {201, #{}, decode_disposable_payment_resource(PaymentResource, EncryptedToken)}}
     catch
         Result ->
             Result
@@ -189,36 +191,6 @@ encode_content(json, Data) ->
         type = <<"application/json">>,
         data = jsx:encode(Data)
     }.
-
-decode_payment_tool_token({bank_card, BankCard}) ->
-    PaymentToolToken = {bank_card_payload, #ptt_BankCardPayload{
-        bank_card = BankCard
-    }},
-    encode_payment_tool_token(PaymentToolToken);
-decode_payment_tool_token({payment_terminal, PaymentTerminal}) ->
-    PaymentToolToken = {payment_terminal_payload, #ptt_PaymentTerminalPayload{
-        payment_terminal = PaymentTerminal
-    }},
-    encode_payment_tool_token(PaymentToolToken);
-decode_payment_tool_token({digital_wallet, DigitalWallet}) ->
-    PaymentToolToken = {digital_wallet_payload, #ptt_DigitalWalletPayload{
-        digital_wallet = DigitalWallet
-    }},
-    encode_payment_tool_token(PaymentToolToken);
-decode_payment_tool_token({crypto_currency, CryptoCurrency}) ->
-    PaymentToolToken = {crypto_currency_payload, #ptt_CryptoCurrencyPayload{
-        crypto_currency = CryptoCurrency
-    }},
-    encode_payment_tool_token(PaymentToolToken).
-
-encode_payment_tool_token(PaymentToolToken) ->
-    ThriftType = {struct, union, {dmsl_payment_tool_token_thrift, 'PaymentToolToken'}},
-    {ok, EncodedToken} = lechiffre:encode(ThriftType, PaymentToolToken),
-    TokenVersion = payment_tool_token_version(),
-    base64url:encode(<<TokenVersion/binary, EncodedToken/binary>>).
-
-payment_tool_token_version() ->
-    <<"v1">>.
 
 decode_payment_tool_details({bank_card, V}) ->
     decode_bank_card_details(V, #{<<"detailsType">> => <<"PaymentToolDetailsBankCard">>});
@@ -549,14 +521,15 @@ process_put_card_data_result(
         SessionID
     }.
 
-decode_disposable_payment_resource(#domain_DisposablePaymentResource{
-    payment_tool = PaymentTool,
-    payment_session_id = PaymentSessionID,
-    client_info = ClientInfo0
-}) ->
+decode_disposable_payment_resource(PaymentResource, EncryptedToken) ->
+    #domain_DisposablePaymentResource{
+        payment_tool = PaymentTool,
+        payment_session_id = PaymentSessionID,
+        client_info = ClientInfo0
+    } = PaymentResource,
     ClientInfo = decode_client_info(ClientInfo0),
     #{
-        <<"paymentToolToken">> => decode_payment_tool_token(PaymentTool),
+        <<"paymentToolToken">> => EncryptedToken,
         <<"paymentSession">> => wrap_payment_session(ClientInfo, PaymentSessionID),
         <<"paymentToolDetails">> => decode_payment_tool_details(PaymentTool),
         <<"clientInfo">> => ClientInfo
