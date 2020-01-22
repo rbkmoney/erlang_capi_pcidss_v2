@@ -170,12 +170,7 @@ create_visa_payment_resource_ok_test(Config) ->
         },
         <<"clientInfo">> => ClientInfo
     }),
-    <<"v1", EncryptedToken/binary>> = base64url:decode(PaymentToolToken),
-    ThriftType = {struct, union, {dmsl_payment_tool_token_thrift, 'PaymentToolToken'}},
-    SecretKeys = get_secret_keys("keys/local/secret.key", Config),
-    {ok, {bank_card_payload, #ptt_BankCardPayload{
-        bank_card = BankCard
-    }}} = lechiffre:decode(ThriftType, EncryptedToken, SecretKeys),
+    {ok, {bank_card, BankCard}} = capi_crypto:decrypt_payment_tool_token(PaymentToolToken),
     CardHolder = BankCard#domain_BankCard.cardholder_name.
 
 -spec create_nspkmir_payment_resource_ok_test(_) ->
@@ -354,16 +349,17 @@ create_googlepay_plain_payment_resource_ok_test(Config) ->
 %%
 
 start_capi(Config) ->
-    KeySource = get_keysource("keys/local/secret.key", Config),
+    KeySource = get_keysource("keys/local/jwk.json", Config),
+    PasswordSource = get_keysource("keys/local/secret.password", Config),
     CapiEnv = [
         {ip, ?CAPI_IP},
         {port, ?CAPI_PORT},
         {service_type, real},
         {lechiffre_opts, #{
-            encryption_key_path => {1, KeySource},
-            decryption_key_path => #{
-                1 => KeySource
-            }
+            encryption_key_path => {KeySource, PasswordSource},
+            decryption_key_paths => [
+                {KeySource, PasswordSource}
+            ]
         }},
         {access_conf, #{
             jwt => #{
@@ -451,12 +447,3 @@ get_context(Token) ->
 
 get_keysource(Key, Config) ->
     filename:join(?config(data_dir, Config), Key).
-
-get_secret_keys(Path, Config) ->
-    {ok, Key} = file:read_file(get_keysource(Path, Config)),
-    #{
-        encryption_key => {1, Key},
-        decryption_key => #{
-            1 => Key
-        }
-    }.
