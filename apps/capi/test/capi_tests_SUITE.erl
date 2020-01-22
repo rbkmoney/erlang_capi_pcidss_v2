@@ -350,16 +350,13 @@ create_googlepay_plain_payment_resource_ok_test(Config) ->
 
 start_capi(Config) ->
     KeySource = get_keysource("keys/local/jwk.json", Config),
-    PasswordSource = get_keysource("keys/local/secret.password", Config),
     CapiEnv = [
         {ip, ?CAPI_IP},
         {port, ?CAPI_PORT},
         {service_type, real},
         {lechiffre_opts, #{
-            encryption_key_path => {KeySource, PasswordSource},
-            decryption_key_paths => [
-                {KeySource, PasswordSource}
-            ]
+            encryption_key_path => KeySource,
+            decryption_key_paths => [KeySource]
         }},
         {access_conf, #{
             jwt => #{
