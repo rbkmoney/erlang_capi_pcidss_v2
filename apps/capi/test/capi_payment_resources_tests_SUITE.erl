@@ -27,6 +27,8 @@
 -export([
     create_visa_payment_resource_ok_test/1,
     create_visa_with_empty_cvv_ok_test/1,
+    create_visa_with_wrong_cvv_test/1,
+    create_visa_with_wrong_cardnumber_test/1,
     create_visa_payment_resource_idemp_ok_test/1,
     create_visa_payment_resource_idemp_fail_test/1,
     create_nspkmir_payment_resource_ok_test/1,
@@ -96,6 +98,8 @@ groups() ->
             [
                 create_visa_payment_resource_ok_test,
                 create_visa_with_empty_cvv_ok_test,
+                create_visa_with_wrong_cvv_test,
+                create_visa_with_wrong_cardnumber_test,
                 create_visa_payment_resource_idemp_ok_test,
                 create_visa_payment_resource_idemp_fail_test,
                 create_nspkmir_payment_resource_ok_test,
@@ -191,7 +195,7 @@ create_visa_payment_resource_ok_test(Config) ->
                         last_digits = Mask
                     }
                 }}
-        end},
+            end},
         {bender, fun('GenerateID', _) -> {ok, capi_ct_helper_bender:get_result(<<"bender_key">>)} end},
         {binbase, fun('Lookup', _) -> {ok, ?BINBASE_LOOKUP_RESULT(<<"VISA">>)} end}
     ], Config),
@@ -246,6 +250,52 @@ create_visa_with_empty_cvv_ok_test(Config) ->
             <<"cardNumber">> => <<"4111111111111111">>,
             <<"cardHolder">> => <<"Alexander Weinerschnitzel">>,
             <<"expDate">> => <<"08/27">>
+        },
+        <<"clientInfo">> => ClientInfo
+    }).
+
+-spec create_visa_with_wrong_cvv_test(_) ->
+    _.
+create_visa_with_wrong_cvv_test(Config) ->
+    capi_ct_helper:mock_services([
+        {bender, fun('GenerateID', _) -> {ok, capi_ct_helper_bender:get_result(<<"bender_key">>)} end},
+        {binbase, fun('Lookup', _) -> {ok, ?BINBASE_LOOKUP_RESULT(<<"VISA">>)} end}
+    ], Config),
+    ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
+    {error,
+        {400,
+            #{<<"code">> := <<"invalidRequest">>,
+              <<"message">> := <<"Invalid cvv length">>}}}
+        = capi_client_tokens:create_payment_resource(?config(context, Config), #{
+        <<"paymentTool">> => #{
+            <<"paymentToolType">> => <<"CardData">>,
+            <<"cardNumber">> => <<"4111111111111111">>,
+            <<"cardHolder">> => <<"Alexander Weinerschnitzel">>,
+            <<"expDate">> => <<"08/27">>,
+            <<"cvv">> => <<"2020">>
+        },
+        <<"clientInfo">> => ClientInfo
+    }).
+
+-spec create_visa_with_wrong_cardnumber_test(_) ->
+    _.
+create_visa_with_wrong_cardnumber_test(Config) ->
+    capi_ct_helper:mock_services([
+        {bender, fun('GenerateID', _) -> {ok, capi_ct_helper_bender:get_result(<<"bender_key">>)} end},
+        {binbase, fun('Lookup', _) -> {ok, ?BINBASE_LOOKUP_RESULT(<<"VISA">>)} end}
+    ], Config),
+    ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
+    {error,
+        {400,
+            #{<<"code">> := <<"invalidRequest">>,
+              <<"message">> := <<"Invalid cardNumber checksum">>}}}
+        = capi_client_tokens:create_payment_resource(?config(context, Config), #{
+        <<"paymentTool">> => #{
+            <<"paymentToolType">> => <<"CardData">>,
+            <<"cardNumber">> => <<"4111111211111111">>,
+            <<"cardHolder">> => <<"Alexander Weinerschnitzel">>,
+            <<"expDate">> => <<"08/27">>,
+            <<"cvv">> => <<"202">>
         },
         <<"clientInfo">> => ClientInfo
     }).
@@ -313,23 +363,23 @@ create_visa_payment_resource_idemp_fail_test(Config) ->
         {cds_storage, fun
             ('PutSession', _) -> {ok, ok};
             ('PutCard', [
-                #cds_PutCardData{pan = <<"511111", _:6/binary, Mask:4/binary>>}
+                #cds_PutCardData{pan = <<"532130", _:6/binary, LastDigits:4/binary>>}
             ]) ->
                 {ok, #cds_PutCardResult{
                     bank_card = #cds_BankCard{
                         token = Token2,
-                        bin = <<"511111">>,
-                        last_digits = Mask
+                        bin = <<"532130">>,
+                        last_digits = LastDigits
                     }
                 }};
             ('PutCard', [
-                #cds_PutCardData{pan = <<"411111", _:6/binary, Mask:4/binary>>}
+                #cds_PutCardData{pan = <<"411111", _:6/binary, LastDigits:4/binary>>}
             ]) ->
                 {ok, #cds_PutCardResult{
                     bank_card = #cds_BankCard{
                         token = Token1,
                         bin = <<"411111">>,
-                        last_digits = Mask
+                        last_digits = LastDigits
                     }
                 }}
         end},
@@ -351,7 +401,7 @@ create_visa_payment_resource_idemp_fail_test(Config) ->
     },
     Params2 = #{
         <<"externalID">>  => ExternalID,
-        <<"paymentTool">> => PaymentTool#{<<"cardNumber">> => <<"5111111111111111">>},
+        <<"paymentTool">> => PaymentTool#{<<"cardNumber">> => <<"5321301234567892">>},
         <<"clientInfo">>  => ClientInfo
     },
     {ok, _} = capi_client_tokens:create_payment_resource(?config(context, Config), Params),
@@ -367,13 +417,13 @@ create_nspkmir_payment_resource_ok_test(Config) ->
         {cds_storage, fun
             ('PutSession', _) -> {ok, ok};
             ('PutCard', [
-                #cds_PutCardData{pan = <<"22001111", _:6/binary, Mask:2/binary>>}
+                #cds_PutCardData{pan = <<"22022002", _:6/binary, LastDigits:2/binary>>}
             ]) ->
                 {ok, #cds_PutCardResult{
                     bank_card = #cds_BankCard{
                         token = ?STRING,
-                        bin = <<"22001111">>,
-                        last_digits = Mask
+                        bin = <<"22022002">>,
+                        last_digits = LastDigits
                     }
                 }}
         end},
@@ -384,13 +434,13 @@ create_nspkmir_payment_resource_ok_test(Config) ->
     {ok, #{<<"paymentToolDetails">> := #{
         <<"detailsType">> := <<"PaymentToolDetailsBankCard">>,
         <<"paymentSystem">> := <<"nspkmir">>,
-        <<"cardNumberMask">> := <<"220011******1111">>,
-        <<"last4">> := <<"1111">>,
-        <<"first6">> := <<"220011">>
+        <<"cardNumberMask">> := <<"220220******8454">>,
+        <<"last4">> := <<"8454">>,
+        <<"first6">> := <<"220220">>
     }}} = capi_client_tokens:create_payment_resource(?config(context, Config), #{
         <<"paymentTool">> => #{
             <<"paymentToolType">> => <<"CardData">>,
-            <<"cardNumber">> => <<"2200111111111111">>,
+            <<"cardNumber">> => <<"2202200223948454">>,
             <<"cardHolder">> => <<"Alexander Weinerschnitzel">>,
             <<"expDate">> => <<"08/27">>,
             <<"cvv">> => <<"232">>
@@ -556,8 +606,8 @@ create_applepay_tokenized_payment_resource_ok_test(Config) ->
     ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
     {ok, #{<<"paymentToolDetails">> := Details = #{
         <<"paymentSystem">> := <<"mastercard">>,
-        <<"cardNumberMask">> := <<"************1234">>,
-        <<"last4">> := <<"1234">>
+        <<"cardNumberMask">> := <<"************7892">>,
+        <<"last4">> := <<"7892">>
     }}} =
         capi_client_tokens:create_payment_resource(?config(context, Config), #{
             <<"paymentTool">> => #{
@@ -586,8 +636,8 @@ create_googlepay_tokenized_payment_resource_ok_test(Config) ->
     {ok, #{<<"paymentToolDetails">> := Details = #{
         <<"paymentSystem">> := <<"mastercard">>,
         <<"tokenProvider">> := <<"googlepay">>,
-        <<"cardNumberMask">> := <<"************1234">>,
-        <<"last4">> := <<"1234">>
+        <<"cardNumberMask">> := <<"************7892">>,
+        <<"last4">> := <<"7892">>
     }}} =
         capi_client_tokens:create_payment_resource(?config(context, Config), #{
             <<"paymentTool">> => #{
@@ -609,8 +659,8 @@ create_googlepay_plain_payment_resource_ok_test(Config) ->
                 {ok, ?UNWRAPPED_PAYMENT_TOOL(
                     ?GOOGLE_PAY_DETAILS,
                     {card, #paytoolprv_Card{
-                        pan = <<"1234567890123456">>,
-                        exp_date = #paytoolprv_ExpDate{month = 10, year = 2018}
+                        pan = <<"5321301234567892">>,
+                        exp_date = #paytoolprv_ExpDate{month = 10, year = 2028}
                     }}
                 )}
             end
@@ -627,9 +677,9 @@ create_googlepay_plain_payment_resource_ok_test(Config) ->
     ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
     {ok, #{<<"paymentToolDetails">> := Details = #{
         <<"paymentSystem">> := <<"mastercard">>,
-        <<"cardNumberMask">> := <<"123456******3456">>,
-        <<"first6">> := <<"123456">>,
-        <<"last4">> := <<"3456">>
+        <<"cardNumberMask">> := <<"532130******7892">>,
+        <<"first6">> := <<"532130">>,
+        <<"last4">> := <<"7892">>
     }}} =
         capi_client_tokens:create_payment_resource(?config(context, Config), #{
             <<"paymentTool">> => #{
@@ -693,7 +743,7 @@ authorization_positive_lifetime_ok_test(Config) ->
             ('PutCard', _) -> {ok, ?PUT_CARD_RESULT}
         end},
         {bender,  fun('GenerateID', _) -> {ok, capi_ct_helper_bender:get_result(<<"bender key">>)} end},
-        {binbase, fun('Lookup', _) -> {ok, ?BINBASE_LOOKUP_RESULT(<<"VISA">>)} end}
+        {binbase, fun('Lookup', _) -> {ok, ?BINBASE_LOOKUP_RESULT} end}
     ], Config),
     Token = capi_ct_helper:issue_token([{[payment_resources], write}], {lifetime, 10}),
     {ok, _} = capi_client_tokens:create_payment_resource(
@@ -710,7 +760,7 @@ authorization_unlimited_lifetime_ok_test(Config) ->
             ('PutCard', _) -> {ok, ?PUT_CARD_RESULT}
         end},
         {bender,  fun('GenerateID', _) -> {ok, capi_ct_helper_bender:get_result(<<"bender key">>)} end},
-        {binbase, fun('Lookup', _) -> {ok, ?BINBASE_LOOKUP_RESULT(<<"VISA">>)} end}
+        {binbase, fun('Lookup', _) -> {ok, ?BINBASE_LOOKUP_RESULT} end}
     ], Config),
     Token = capi_ct_helper:issue_token([{[payment_resources], write}], unlimited),
     {ok, _} = capi_client_tokens:create_payment_resource(
@@ -727,7 +777,7 @@ authorization_far_future_deadline_ok_test(Config) ->
             ('PutCard', _) -> {ok, ?PUT_CARD_RESULT}
         end},
         {bender,  fun('GenerateID', _) -> {ok, capi_ct_helper_bender:get_result(<<"bender key">>)} end},
-        {binbase, fun('Lookup', _) -> {ok, ?BINBASE_LOOKUP_RESULT(<<"VISA">>)} end}
+        {binbase, fun('Lookup', _) -> {ok, ?BINBASE_LOOKUP_RESULT} end}
     ], Config),
     Token = capi_ct_helper:issue_token([{[payment_resources], write}], {deadline, 4102444800}), % 01/01/2100 @ 12:00am (UTC)
     {ok, _} = capi_client_tokens:create_payment_resource(

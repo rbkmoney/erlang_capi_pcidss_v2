@@ -37,7 +37,7 @@ decode_payment_tool_details({mobile_commerce, MobileCommerce}) ->
     }.
 
 decode_bank_card_details(BankCard, V) ->
-    LastDigits = decode_last_digits(BankCard#domain_BankCard.masked_pan),
+    LastDigits = decode_last_digits(BankCard#domain_BankCard.last_digits),
     Bin = get_bank_card_bin(BankCard#domain_BankCard.bin),
     capi_handler_utils:merge_and_compact(V, #{
         <<"last4">>          => LastDigits,

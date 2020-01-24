@@ -8,7 +8,7 @@
 
 -behaviour(capi_handler).
 -export([process_request/3]).
--import(capi_handler_utils, [logic_error/2]).
+-import(capi_handler_utils, [logic_error/2, validation_error/1]).
 
 -define(CAPI_NS, <<"com.rbkmoney.capi">>).
 
@@ -93,8 +93,15 @@ validate_ip(IP) ->
 process_card_data(Data, IdempotentParams, Context) ->
     SessionData = encode_session_data(Data),
     CardData = encode_card_data(Data),
-    Result = put_card_data_to_cds(CardData, SessionData, IdempotentParams, Context),
-    process_card_data_result(Result, CardData).
+    BankInfo = get_bank_info(CardData#'cds_PutCardData'.pan, Context),
+    PaymentSystem = capi_bankcard:payment_system(BankInfo),
+    case capi_bankcard:validate(CardData, SessionData, PaymentSystem) of
+        ok ->
+            Result = put_card_data_to_cds(CardData, SessionData, IdempotentParams, BankInfo, Context),
+            process_card_data_result(Result, CardData);
+        {error, Error} ->
+            throw({ok, validation_error(Error)})
+    end.
 
 process_card_data_result(
     {{bank_card, BankCard}, SessionID},
@@ -105,7 +112,7 @@ process_card_data_result(
     {
         {bank_card, BankCard#domain_BankCard{
             bin = get_first6(CardNumber),
-            masked_pan = get_last4(CardNumber)
+            last_digits = get_last4(CardNumber)
         }},
         SessionID
     }.
@@ -142,9 +149,9 @@ parse_exp_date(ExpDate) when is_binary(ExpDate) ->
         year = Year
     }.
 
-put_card_data_to_cds(CardData, SessionData, {ExternalID, IdempotentKey}, Context) ->
+put_card_data_to_cds(CardData, SessionData, {ExternalID, IdempotentKey}, BankInfo, Context) ->
     #{woody_context := WoodyCtx} = Context,
-    BankCard = put_card_to_cds(CardData, SessionData, Context),
+    BankCard = put_card_to_cds(CardData, SessionData, BankInfo, Context),
     {bank_card, #domain_BankCard{token = Token}} = BankCard,
     RandomID = gen_random_id(),
     Hash = erlang:phash2(Token),
@@ -156,20 +163,15 @@ put_card_data_to_cds(CardData, SessionData, {ExternalID, IdempotentKey}, Context
             throw({ok, logic_error(externalIDConflict, ExternalID)})
     end.
 
-put_card_to_cds(PutCardData, SessionData, Context) ->
-    case capi_bankcard:lookup_bank_info(PutCardData#cds_PutCardData.pan, Context) of
-        {ok, BankInfo} ->
-            Call = {cds_storage, 'PutCard', [PutCardData]},
-            case capi_handler_utils:service_call(Call, Context) of
-                {ok, #cds_PutCardResult{bank_card = BankCard}} ->
-                    ExpDate = PutCardData#cds_PutCardData.exp_date,
-                    CardholderName = PutCardData#cds_PutCardData.cardholder_name,
-                    {bank_card, expand_card_info(BankCard, BankInfo, undef_cvv(SessionData), ExpDate, CardholderName)};
-                {exception, #cds_InvalidCardData{}} ->
-                    throw({ok, logic_error(invalidRequest, <<"Card data is invalid">>)})
-            end;
-        {error, _Reason} ->
-            throw({ok, logic_error(invalidRequest, <<"Unsupported card">>)})
+put_card_to_cds(PutCardData, SessionData, BankInfo, Context) ->
+    Call = {cds_storage, 'PutCard', [PutCardData]},
+    case capi_handler_utils:service_call(Call, Context) of
+        {ok, #cds_PutCardResult{bank_card = BankCard}} ->
+            ExpDate = PutCardData#cds_PutCardData.exp_date,
+            CardholderName = PutCardData#cds_PutCardData.cardholder_name,
+            {bank_card, expand_card_info(BankCard, BankInfo, undef_cvv(SessionData), ExpDate, CardholderName)};
+        {exception, #cds_InvalidCardData{}} ->
+            throw({ok, logic_error(invalidRequest, <<"Card data is invalid">>)})
     end.
 
 expand_card_info(BankCard, #{
@@ -178,10 +180,10 @@ expand_card_info(BankCard, #{
     issuer_country  := IssuerCountry,
     metadata        := Metadata
 }, HaveCVV, ExpDate, CardholderName) ->
-    #'domain_BankCard'{
+    #domain_BankCard{
         token           = BankCard#cds_BankCard.token,
         bin             = BankCard#cds_BankCard.bin,
-        masked_pan      = BankCard#cds_BankCard.last_digits,
+        last_digits     = BankCard#cds_BankCard.last_digits,
         payment_system  = PaymentSystem,
         issuer_country  = IssuerCountry,
         bank_name       = BankName,
@@ -269,10 +271,17 @@ process_tokenized_card_data(Data, IdempotentParams, Context) ->
         {exception, #'InvalidRequest'{}} ->
             throw({ok, logic_error(invalidRequest, <<"Tokenized card data is invalid">>)})
     end,
-    CardData = encode_tokenized_card_data(UnwrappedPaymentTool),
+    PutCardData = encode_tokenized_card_data(UnwrappedPaymentTool),
     SessionData = encode_tokenized_session_data(UnwrappedPaymentTool),
-    Result = put_card_data_to_cds(CardData, SessionData, IdempotentParams, Context),
-    process_tokenized_card_data_result(Result, UnwrappedPaymentTool).
+    BankInfo = get_bank_info(PutCardData#cds_PutCardData.pan, Context),
+    PaymentSystem = capi_bankcard:payment_system(BankInfo),
+    case capi_bankcard:validate(PutCardData, SessionData, PaymentSystem) of
+        ok ->
+            Result = put_card_data_to_cds(PutCardData, SessionData, IdempotentParams, BankInfo, Context),
+            process_tokenized_card_data_result(Result, UnwrappedPaymentTool);
+        {error, Error} ->
+            throw({ok, validation_error(Error)})
+    end.
 
 get_token_provider_service_name(Data) ->
     case Data of
@@ -320,7 +329,7 @@ process_tokenized_card_data_result(
         {bank_card, BankCard#domain_BankCard{
             bin            = get_tokenized_bin(PaymentData),
             payment_system = PaymentSystem,
-            masked_pan     = get_tokenized_pan(Last4, PaymentData),
+            last_digits    = get_tokenized_pan(Last4, PaymentData),
             token_provider = get_payment_token_provider(PaymentDetails, PaymentData),
             %% Не учитываем наличие cvv для токенизированных карт, даже если проводим их как обычные.
             is_cvv_empty   = undefined
@@ -459,3 +468,11 @@ encode_mobile_commerce(MobilePhone, Operator) ->
         operator = Operator,
         phone = #domain_MobilePhone{cc = Cc, ctn = Ctn}
     }.
+
+get_bank_info(CardDataPan, Context) ->
+    case capi_bankcard:lookup_bank_info(CardDataPan, Context) of
+        {ok, BankInfo} ->
+            BankInfo;
+        {error, _Reason} ->
+            throw({ok, logic_error(invalidRequest, <<"Unsupported card">>)})
+    end.
