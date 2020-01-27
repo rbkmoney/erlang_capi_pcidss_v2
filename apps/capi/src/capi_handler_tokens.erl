@@ -207,16 +207,10 @@ get_last4(CardNumber) ->
 
 undef_cvv(#cds_SessionData{
         auth_data = {card_security_code, #cds_CardSecurityCode{
-            value = <<"">>
+            value = Value
         }}
     }) ->
-    true;
-undef_cvv(#cds_SessionData{
-        auth_data = {card_security_code, #cds_CardSecurityCode{
-            value = _Value
-        }}
-    }) ->
-    false;
+    Value == <<>>;
 undef_cvv(#cds_SessionData{}) ->
     undefined.
 

@@ -36,7 +36,7 @@
         issuer_country
     }.
 
--type put_card_data() :: cds_proto_storage_thrift:'PutCardData'().
+-type card_data() :: cds_proto_storage_thrift:'PutCardData'().
 -type session_data() :: cds_proto_storage_thrift:'SessionData'().
 -type payment_system() :: dmsl_domain_thrift:'BankCardPaymentSystem'().
 -type reason() :: unrecognized |{invalid, cardnumber | cvv | exp_date, check()}.
@@ -167,7 +167,7 @@ decode_issuer_country(undefined) ->
 payment_system(BankInfo) ->
     maps:get(payment_system, BankInfo).
 
--spec validate(put_card_data(), session_data() | undefined, payment_system()) ->
+-spec validate(card_data(), session_data() | undefined, payment_system()) ->
     ok | {error, reason()}.
 
 validate(PutCardData, SessionData, PaymentSystem) ->
