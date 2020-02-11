@@ -62,7 +62,7 @@
     <<"paymentTool">> => #{
         <<"paymentToolType">> => <<"CardData">>,
         <<"cardNumber">> => <<"4111111111111111">>,
-        <<"cardHolder">> => <<"ALEXANDER WEINERSCHNITZEL">>,
+        <<"cardHolder">> => <<"Alexander Weinerschnitzel">>,
         <<"expDate">> => <<"08/27">>,
         <<"cvv">> => <<"232">>
     },
@@ -210,7 +210,7 @@ create_visa_payment_resource_ok_test(Config) ->
         <<"paymentTool">> => #{
             <<"paymentToolType">> => <<"CardData">>,
             <<"cardNumber">> => <<"4111111111111111">>,
-            <<"cardHolder">> => <<"ALEXANDER WEINERSCHNITZEL">>,
+            <<"cardHolder">> => <<"Alexander Weinerschnitzel">>,
             <<"expDate">> => <<"08/27">>,
             <<"cvv">> => <<"232">>
         },
@@ -248,7 +248,7 @@ create_visa_with_empty_cvv_ok_test(Config) ->
         <<"paymentTool">> => #{
             <<"paymentToolType">> => <<"CardData">>,
             <<"cardNumber">> => <<"4111111111111111">>,
-            <<"cardHolder">> => <<"ALEXANDER WEINERSCHNITZEL">>,
+            <<"cardHolder">> => <<"Alexander Weinerschnitzel">>,
             <<"expDate">> => <<"08/27">>
         },
         <<"clientInfo">> => ClientInfo
@@ -270,7 +270,7 @@ create_visa_with_wrong_cvv_test(Config) ->
         <<"paymentTool">> => #{
             <<"paymentToolType">> => <<"CardData">>,
             <<"cardNumber">> => <<"4111111111111111">>,
-            <<"cardHolder">> => <<"ALEXANDER WEINERSCHNITZEL">>,
+            <<"cardHolder">> => <<"Alexander Weinerschnitzel">>,
             <<"expDate">> => <<"08/27">>,
             <<"cvv">> => <<"2020">>
         },
@@ -293,7 +293,7 @@ create_visa_with_wrong_cardnumber_test(Config) ->
         <<"paymentTool">> => #{
             <<"paymentToolType">> => <<"CardData">>,
             <<"cardNumber">> => <<"4111111211111111">>,
-            <<"cardHolder">> => <<"ALEXANDER WEINERSCHNITZEL">>,
+            <<"cardHolder">> => <<"Alexander Weinerschnitzel">>,
             <<"expDate">> => <<"08/27">>,
             <<"cvv">> => <<"202">>
         },
@@ -327,7 +327,7 @@ create_visa_payment_resource_idemp_ok_test(Config) ->
         <<"paymentTool">> => #{
             <<"paymentToolType">> => <<"CardData">>,
             <<"cardNumber">>      => <<"4111111111111111">>,
-            <<"cardHolder">>      => <<"ALEXANDER WEINERSCHNITZEL">>,
+            <<"cardHolder">>      => <<"Alexander Weinerschnitzel">>,
             <<"expDate">>         => <<"08/27">>,
             <<"cvv">>             => <<"232">>
         },
@@ -390,7 +390,7 @@ create_visa_payment_resource_idemp_fail_test(Config) ->
     PaymentTool = #{
             <<"paymentToolType">> => <<"CardData">>,
             <<"cardNumber">>      => <<"4111111111111111">>,
-            <<"cardHolder">>      => <<"ALEXANDER WEINERSCHNITZEL">>,
+            <<"cardHolder">>      => <<"Alexander Weinerschnitzel">>,
             <<"expDate">>         => <<"08/27">>,
             <<"cvv">>             => <<"232">>
         },
@@ -441,7 +441,7 @@ create_nspkmir_payment_resource_ok_test(Config) ->
         <<"paymentTool">> => #{
             <<"paymentToolType">> => <<"CardData">>,
             <<"cardNumber">> => <<"2202200223948454">>,
-            <<"cardHolder">> => <<"ALEXANDER WEINERSCHNITZEL">>,
+            <<"cardHolder">> => <<"Alexander Weinerschnitzel">>,
             <<"expDate">> => <<"08/27">>,
             <<"cvv">> => <<"232">>
         },
