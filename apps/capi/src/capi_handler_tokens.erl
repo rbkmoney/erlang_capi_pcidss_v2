@@ -138,10 +138,7 @@ encode_session_data(CardData) ->
 
 encode_card_data(CardData) ->
     CardNumber = genlib:to_binary(genlib_map:get(<<"cardNumber">>, CardData)),
-    #domain_BankCardExpDate{
-        year = Year,
-        month = Month
-    } = parse_exp_date(genlib_map:get(<<"expDate">>, CardData)),
+    ExpDate = parse_exp_date(genlib_map:get(<<"expDate">>, CardData)),
     Cardholder = genlib_map:get(<<"cardHolder">>, CardData),
     {
         #cds_CardData{
@@ -149,7 +146,7 @@ encode_card_data(CardData) ->
         },
         genlib_map:compact(#{
             cardholder => Cardholder,
-            exp_date => {Month, Year}
+            exp_date => ExpDate
         })
     }.
 
@@ -163,10 +160,7 @@ parse_exp_date(ExpDate) when is_binary(ExpDate) ->
         Y ->
             Y
     end,
-    #domain_BankCardExpDate{
-        month = genlib:to_int(Month),
-        year = Year
-    }.
+    {genlib:to_int(Month), Year}.
 
 put_card_data_to_cds(CardData, SessionData, {ExternalID, IdempotentKey}, BankInfo, Context) ->
     #{woody_context := WoodyCtx} = Context,
