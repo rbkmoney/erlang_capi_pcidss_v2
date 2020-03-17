@@ -222,6 +222,23 @@ create_visa_payment_resource_ok_test(Config) ->
 -spec create_payment_resource_invalid_cardholder_test(_) ->
     _.
 create_payment_resource_invalid_cardholder_test(Config) ->
+    capi_ct_helper:mock_services([
+        {cds_storage, fun
+            ('PutSession', _) -> {ok, ok};
+            ('PutCard', [
+                #cds_CardData{pan = <<"411111", _:6/binary, Mask:4/binary>>}
+            ]) ->
+                {ok, #cds_PutCardResult{
+                    bank_card = #cds_BankCard{
+                        token = ?STRING,
+                        bin = <<"411111">>,
+                        last_digits = Mask
+                    }
+                }}
+        end},
+        {bender, fun('GenerateID', _) -> {ok, capi_ct_helper_bender:get_result(<<"bender_key">>)} end},
+        {binbase, fun('Lookup', _) -> {ok, ?BINBASE_LOOKUP_RESULT(<<"VISA">>)} end}
+    ], Config),
     ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
     PaymentTool = #{
         <<"paymentToolType">> => <<"CardData">>,
