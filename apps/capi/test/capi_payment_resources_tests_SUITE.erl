@@ -257,6 +257,12 @@ create_payment_resource_invalid_cardholder_test(Config) ->
             <<"paymentTool">> => PaymentTool#{<<"cardHolder">> => <<"4111111111111111">>},
             <<"clientInfo">> => ClientInfo
         }
+    ),
+    {error, {request_validation_failed, _}} = capi_client_tokens:create_payment_resource(?config(context, Config),
+        #{
+            <<"paymentTool">> => PaymentTool#{<<"cardHolder">> => <<"Вася123"/utf8>>},
+            <<"clientInfo">> => ClientInfo
+        }
     ).
 
 -spec create_visa_with_empty_cvv_ok_test(_) ->
