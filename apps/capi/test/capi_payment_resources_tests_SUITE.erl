@@ -226,7 +226,7 @@ create_payment_resource_invalid_cardholder_test(Config) ->
         {cds_storage, fun
             ('PutSession', _) -> {ok, ok};
             ('PutCard', [
-                #cds_CardData{pan = <<"411111", _:6/binary, Mask:4/binary>>}
+                #cds_PutCardData{pan = <<"411111", _:6/binary, Mask:4/binary>>}
             ]) ->
                 {ok, #cds_PutCardResult{
                     bank_card = #cds_BankCard{
