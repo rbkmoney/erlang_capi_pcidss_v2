@@ -142,7 +142,10 @@ encode_card_data(CardData) ->
     Cardholder = genlib_map:get(<<"cardHolder">>, CardData),
     {
         #cds_CardData{
-            pan = CardNumber
+            pan = CardNumber,
+            %% TODO Remove after migration
+            exp_date = encode_cds_exp_date(ExpDate),
+            cardholder_name = CardNumber
         },
         genlib_map:compact(#{
             cardholder => Cardholder,
@@ -161,6 +164,14 @@ parse_exp_date(ExpDate) when is_binary(ExpDate) ->
             Y
     end,
     {genlib:to_int(Month), Year}.
+
+encode_cds_exp_date(undefined) ->
+    undefined;
+encode_cds_exp_date({Month, Year}) ->
+    #cds_ExpDate{
+        month = Month,
+        year = Year
+    }.
 
 put_card_data_to_cds(CardData, SessionData, {ExternalID, IdempotentKey}, BankInfo, Context) ->
     #{woody_context := WoodyCtx} = Context,
@@ -372,13 +383,17 @@ encode_tokenized_card_data(#paytoolprv_UnwrappedPaymentTool{
         cardholder_name = CardholderName
     }
 }) ->
+    ExpDate = {Month, Year},
     {
         #cds_CardData{
-            pan = DPAN
+            pan = DPAN,
+            %% TODO Remove after migration
+            exp_date = encode_cds_exp_date(ExpDate),
+            cardholder_name = CardholderName
         },
         genlib_map:compact(#{
             cardholder => CardholderName,
-            exp_date => {Month, Year}
+            exp_date => ExpDate
         })
     };
 encode_tokenized_card_data(#paytoolprv_UnwrappedPaymentTool{
@@ -393,13 +408,17 @@ encode_tokenized_card_data(#paytoolprv_UnwrappedPaymentTool{
         cardholder_name = CardholderName
     }
 }) ->
+    ExpDate = {Month, Year},
     {
         #cds_CardData{
-            pan = PAN
+            pan = PAN,
+            %% TODO Remove after migration
+            exp_date = encode_cds_exp_date(ExpDate),
+            cardholder_name = CardholderName
         },
         genlib_map:compact(#{
             cardholder => CardholderName,
-            exp_date => {Month, Year}
+            exp_date => ExpDate
         })
     }.
 
