@@ -333,14 +333,14 @@ process_tokenized_card_data_result(
         details = PaymentDetails
     }
 ) ->
+    TokenProvider = get_payment_token_provider(PaymentDetails, PaymentData),
     {
         {bank_card, BankCard#domain_BankCard{
             bin            = get_tokenized_bin(PaymentData),
             payment_system = PaymentSystem,
             last_digits    = get_tokenized_pan(Last4, PaymentData),
-            token_provider = get_payment_token_provider(PaymentDetails, PaymentData),
-            %% Не учитываем наличие cvv для токенизированных карт, даже если проводим их как обычные.
-            is_cvv_empty   = undefined
+            token_provider = TokenProvider,
+            is_cvv_empty   = set_is_empty_cvv(TokenProvider, BankCard)
         }},
         SessionID
     }.
@@ -494,3 +494,8 @@ get_bank_info(CardDataPan, Context) ->
         {error, _Reason} ->
             throw({ok, logic_error(invalidRequest, <<"Unsupported card">>)})
     end.
+
+set_is_empty_cvv(googlepay, BankCard) ->
+    BankCard#domain_BankCard.is_cvv_empty;
+set_is_empty_cvv(_, _) ->
+    undefined.
