@@ -36,7 +36,7 @@
         issuer_country
     }.
 
--type card_data() :: cds_proto_storage_thrift:'CardData'().
+-type card_data() :: cds_proto_storage_thrift:'PutCardData'().
 -type extra_card_data() :: #{
     cardholder => binary() | undefined,
     exp_data => {integer(), integer()}
