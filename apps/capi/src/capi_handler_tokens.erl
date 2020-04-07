@@ -357,6 +357,16 @@ get_tokenized_pan(_Last4, {card, #paytoolprv_Card{pan = PAN}}) ->
 get_tokenized_pan(Last4, _PaymentData) when Last4 =/= undefined ->
     Last4.
 
+% Do not drop is_cvv_empty flag for tokenized bank cards which looks like
+% simple bank card instead. This prevent wrong routing decisions in hellgate
+% when cvv is missing, but is_cvv_empty = undefined, which leads to bypass
+% routing restrictions and crash adapter. This situation is
+% only applicable for GooglePay with tokenized card via browser.
+set_is_empty_cvv(undefined, BankCard) ->
+    BankCard#domain_BankCard.is_cvv_empty;
+set_is_empty_cvv(_, _) ->
+    undefined.
+
 get_payment_token_provider(_PaymentDetails, {card, _}) ->
     % TODO
     % We deliberately hide the fact that we've got that payment tool from the likes of Google Chrome browser
@@ -494,8 +504,3 @@ get_bank_info(CardDataPan, Context) ->
         {error, _Reason} ->
             throw({ok, logic_error(invalidRequest, <<"Unsupported card">>)})
     end.
-
-set_is_empty_cvv(googlepay, BankCard) ->
-    BankCard#domain_BankCard.is_cvv_empty;
-set_is_empty_cvv(_, _) ->
-    undefined.
