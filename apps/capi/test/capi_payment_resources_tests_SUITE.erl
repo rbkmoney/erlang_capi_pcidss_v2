@@ -224,7 +224,7 @@ create_visa_payment_resource_ok_test(Config) ->
 -spec expiration_date_fail_test(_) ->
     _.
 expiration_date_fail_test(Config) ->
-    mock_services([
+    capi_ct_helper:mock_services([
         {cds_storage, fun
             ('PutSession', _) -> {ok, ok};
             ('PutCard', [
