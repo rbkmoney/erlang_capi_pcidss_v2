@@ -56,10 +56,9 @@
 
 -spec validation_env() -> validation_env().
 validation_env() ->
-    %% After 01.03.2020 users(payers) can't exchange bankcard with expiring date.
-    %% (Temporary decision)BankCard with expiration date after 01.03, not expired.
     DefaultEnv = #{now => calendar:universal_time()},
-    genlib_app:env(capi_pcidss, validation, DefaultEnv).
+    Env = genlib_app:env(capi_pcidss, validation, #{}),
+    maps:merge(DefaultEnv, Env).
 
 -spec lookup_bank_info(_PAN :: binary(), capi_handler:processing_context()) ->
     {ok, bank_info()} | {error, lookup_error()}.
