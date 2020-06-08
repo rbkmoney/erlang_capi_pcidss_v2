@@ -26,12 +26,12 @@ init([]) ->
     LechiffreSpec = lechiffre:child_spec(lechiffre, LechiffreOpts),
     {LogicHandler, LogicHandlerSpecs} = get_logic_handler_info(),
     HealthRoutes = [{'_', [erl_health_handle:get_route(genlib_app:env(capi_pcidss, health_checkers, []))]}],
-    SwaggerSpec  = capi_swagger_server:child_spec({HealthRoutes, LogicHandler}),
+    SwaggerSpecs = capi_swagger_server:child_spec({HealthRoutes, LogicHandler}),
     UacConf      = get_uac_config(),
     ok           = uac:configure(UacConf),
     {ok, {
         {one_for_all, 0, 1},
-        [LechiffreSpec] ++ LogicHandlerSpecs ++ [SwaggerSpec]
+        [LechiffreSpec] ++ LogicHandlerSpecs ++ [SwaggerSpecs]
     }}.
 
 -spec get_logic_handler_info() -> {Handler :: atom(), [Spec :: supervisor:child_spec()] | []} .
