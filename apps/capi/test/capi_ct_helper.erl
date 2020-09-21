@@ -68,7 +68,6 @@ start_app(AppName) ->
     [app_name()].
 
 start_app(AppName, Env) ->
-    ct:print("start app [~p]: Env: ~n~p", [AppName, Env]),
     genlib_app:start_application_with(AppName, Env).
 
 -spec start_capi(config()) ->

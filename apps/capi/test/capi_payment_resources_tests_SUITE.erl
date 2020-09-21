@@ -428,15 +428,18 @@ create_visa_payment_resource_idemp_ok_test(Config) ->
         <<"cardNumberMask">> => <<"411111******1111">>
     },
     {ok, #{
-        <<"paymentToolToken">>   := _,
+        <<"paymentToolToken">>   := PT1,
         <<"paymentSession">>     := ToolSession,
         <<"paymentToolDetails">> := PaymentToolDetails
     }} = capi_client_tokens:create_payment_resource(?config(context, Config), Params),
     {ok, #{
-        <<"paymentToolToken">> := _,
-        <<"paymentSession">>   := ToolSession,
+        <<"paymentToolToken">>   := PT2,
+        <<"paymentSession">>     := ToolSession,
         <<"paymentToolDetails">> := PaymentToolDetails
-    }} = capi_client_tokens:create_payment_resource(?config(context, Config), Params).
+    }} = capi_client_tokens:create_payment_resource(?config(context, Config), Params),
+    PaymentTool1 = decrypt_payment_tool_token(PT1),
+    PaymentTool2 = decrypt_payment_tool_token(PT2),
+    ?assertEqual(PaymentTool1, PaymentTool2).
 
 -spec create_visa_payment_resource_idemp_fail_test(_) ->
     _.
