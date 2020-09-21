@@ -428,12 +428,12 @@ create_visa_payment_resource_idemp_ok_test(Config) ->
         <<"cardNumberMask">> => <<"411111******1111">>
     },
     {ok, #{
-        <<"paymentToolToken">>   := ToolToken,
+        <<"paymentToolToken">>   := _,
         <<"paymentSession">>     := ToolSession,
         <<"paymentToolDetails">> := PaymentToolDetails
     }} = capi_client_tokens:create_payment_resource(?config(context, Config), Params),
     {ok, #{
-        <<"paymentToolToken">> := ToolToken,
+        <<"paymentToolToken">> := _,
         <<"paymentSession">>   := ToolSession,
         <<"paymentToolDetails">> := PaymentToolDetails
     }} = capi_client_tokens:create_payment_resource(?config(context, Config), Params).
@@ -638,9 +638,10 @@ create_qw_payment_resource_with_access_token_depends_on_external_id(Config) ->
     BenderResultExtID   = capi_ct_helper_bender:get_result(<<"benderkey0">>),
     BenderResultNoExtId = capi_ct_helper_bender:get_result(<<"benderkey1">>),
     capi_ct_helper:mock_services([
-        {bender,      fun ('GenerateID', [?IDEMPOTENT_KEY | _]) -> {ok, BenderResultExtID};
-                          ('GenerateID', _Args)                 -> {ok, BenderResultNoExtId}
-                      end},
+        {bender, fun
+            ('GenerateID', [?IDEMPOTENT_KEY | _]) -> {ok, BenderResultExtID};
+            ('GenerateID', _Args)                 -> {ok, BenderResultNoExtId}
+        end},
         {tds_storage, fun ('PutToken', _) -> {ok, ok} end}
     ], Config),
     ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
@@ -653,15 +654,18 @@ create_qw_payment_resource_with_access_token_depends_on_external_id(Config) ->
         },
         <<"clientInfo">> => ClientInfo
     },
-    PaymentParamsExtId = PaymentParamsNoExtId#{ <<"externalID">> => <<"ext_id">> },
+    PaymentParamsExtId = PaymentParamsNoExtId#{<<"externalID">> => <<"ext_id">>},
     ResultExtId0  = capi_client_tokens:create_payment_resource(?config(context, Config), PaymentParamsExtId),
     ResultExtId1  = capi_client_tokens:create_payment_resource(?config(context, Config), PaymentParamsExtId),
     ResultNoExtId = capi_client_tokens:create_payment_resource(?config(context, Config), PaymentParamsNoExtId),
     {ok, #{<<"paymentToolToken">> := TokenExtId0}}  = ResultExtId0,
     {ok, #{<<"paymentToolToken">> := TokenExtId1}}  = ResultExtId1,
     {ok, #{<<"paymentToolToken">> := TokenNoExtId}} = ResultNoExtId,
-    ?assertEqual(TokenExtId0, TokenExtId1),
-    ?assertNotEqual(TokenExtId0, TokenNoExtId).
+    PaymentTool1 = decrypt_payment_tool_token(TokenExtId0),
+    PaymentTool2 = decrypt_payment_tool_token(TokenExtId1),
+    PaymentTool3 = decrypt_payment_tool_token(TokenNoExtId),
+    ?assertEqual(PaymentTool1, PaymentTool2),
+    ?assertNotEqual(PaymentTool1, PaymentTool3).
 
 -spec create_crypto_payment_resource_ok_test(_) ->
     _.
@@ -931,6 +935,10 @@ issue_dummy_token(ACL, Config) ->
     JWT = jose_jwt:sign(BadJWK, #{<<"alg">> => <<"RS256">>, <<"kid">> => KID}, Claims),
     {_Modules, Token} = jose_jws:compact(JWT),
     Token.
+
+decrypt_payment_tool_token(PaymentToolToken) ->
+    {ok, PaymentTool} = capi_crypto:decrypt_payment_tool_token(PaymentToolToken),
+    PaymentTool.
 
 get_keysource(Key, Config) ->
     filename:join(?config(data_dir, Config), Key).
