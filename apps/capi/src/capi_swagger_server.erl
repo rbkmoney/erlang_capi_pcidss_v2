@@ -35,10 +35,12 @@ get_socket_transport() ->
 
 get_cowboy_config(AdditionalRoutes, LogicHandler) ->
     Dispatch =
-        cowboy_router:compile(squash_routes(
-            AdditionalRoutes ++
-            swag_server_router:get_paths(LogicHandler)
-        )),
+        cowboy_router:compile(
+            squash_routes(
+                AdditionalRoutes ++
+                    swag_server_router:get_paths(LogicHandler)
+            )
+        ),
     CowboyOpts = #{
         env => #{
             dispatch => Dispatch,
