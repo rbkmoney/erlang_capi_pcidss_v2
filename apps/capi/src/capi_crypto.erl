@@ -2,10 +2,9 @@
 
 -include_lib("damsel/include/dmsl_payment_tool_token_thrift.hrl").
 
--type encrypted_token()     :: binary().
--type payment_tool()        :: dmsl_domain_thrift:'PaymentTool'().
--type payment_tool_token()  :: dmsl_payment_tool_token_thrift:'PaymentToolToken'().
-
+-type encrypted_token() :: binary().
+-type payment_tool() :: dmsl_domain_thrift:'PaymentTool'().
+-type payment_tool_token() :: dmsl_payment_tool_token_thrift:'PaymentToolToken'().
 
 -export_type([encrypted_token/0]).
 
@@ -23,9 +22,8 @@ create_encrypted_payment_tool_token(PaymentTool) ->
     <<TokenVersion/binary, ".", EncodedToken/binary>>.
 
 -spec decrypt_payment_tool_token(encrypted_token()) ->
-    {ok, payment_tool_token()} |
-    {error, lechiffre:decoding_error()}.
-
+    {ok, payment_tool_token()}
+    | {error, lechiffre:decoding_error()}.
 decrypt_payment_tool_token(EncryptedToken) ->
     Ver = payment_tool_token_version(),
     Size = byte_size(Ver),
@@ -58,6 +56,6 @@ encode_payment_tool_token({crypto_currency, CryptoCurrency}) ->
         crypto_currency = CryptoCurrency
     }};
 encode_payment_tool_token({mobile_commerce, MobileCommerce}) ->
-    {mobile_commerce_payload, #ptt_MobileCommercePayload {
+    {mobile_commerce_payload, #ptt_MobileCommercePayload{
         mobile_commerce = MobileCommerce
     }}.
