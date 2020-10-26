@@ -72,7 +72,7 @@
  {<<"jose">>,{pkg,<<"jose">>,<<"1.7.9">>},1},
  {<<"jsx">>,{pkg,<<"jsx">>,<<"2.8.2">>},0},
  {<<"lechiffre">>,
-  {git,"https://github.com/rbkmoney/lechiffre.git",
+     {git,"git@github.com:rbkmoney/lechiffre.git",
        {ref,"da5b6e85f67ce39d6da07d8efa1cd426ac9ce8e7"}},
   0},
  {<<"metrics">>,{pkg,<<"metrics">>,<<"1.0.1">>},1},
