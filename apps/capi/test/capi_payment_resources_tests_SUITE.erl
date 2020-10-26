@@ -456,13 +456,13 @@ create_visa_payment_resource_idemp_ok_test(Config) ->
         <<"cardNumberMask">> => <<"411111******1111">>
     },
     {ok, #{
-        <<"paymentToolToken">>   := PT1,
-        <<"paymentSession">>     := ToolSession,
+        <<"paymentToolToken">> := PT1,
+        <<"paymentSession">> := ToolSession,
         <<"paymentToolDetails">> := PaymentToolDetails
     }} = capi_client_tokens:create_payment_resource(?config(context, Config), Params),
     {ok, #{
-        <<"paymentToolToken">>   := PT2,
-        <<"paymentSession">>     := ToolSession,
+        <<"paymentToolToken">> := PT2,
+        <<"paymentSession">> := ToolSession,
         <<"paymentToolDetails">> := PaymentToolDetails
     }} = capi_client_tokens:create_payment_resource(?config(context, Config), Params),
     PaymentTool1 = decrypt_payment_tool_token(PT1),
@@ -697,13 +697,16 @@ create_qw_payment_resource_with_access_token_generates_different_payment_token(C
 create_qw_payment_resource_with_access_token_depends_on_external_id(Config) ->
     BenderResultExtID = capi_ct_helper_bender:get_result(<<"benderkey0">>),
     BenderResultNoExtId = capi_ct_helper_bender:get_result(<<"benderkey1">>),
-    capi_ct_helper:mock_services([
-        {bender, fun
-            ('GenerateID', [?IDEMPOTENT_KEY | _]) -> {ok, BenderResultExtID};
-            ('GenerateID', _Args)                 -> {ok, BenderResultNoExtId}
-        end},
-        {tds_storage, fun ('PutToken', _) -> {ok, ok} end}
-    ], Config),
+    capi_ct_helper:mock_services(
+        [
+            {bender, fun
+                ('GenerateID', [?IDEMPOTENT_KEY | _]) -> {ok, BenderResultExtID};
+                ('GenerateID', _Args) -> {ok, BenderResultNoExtId}
+            end},
+            {tds_storage, fun('PutToken', _) -> {ok, ok} end}
+        ],
+        Config
+    ),
     ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
     PaymentParamsNoExtId = #{
         <<"paymentTool">> => #{
@@ -715,8 +718,8 @@ create_qw_payment_resource_with_access_token_depends_on_external_id(Config) ->
         <<"clientInfo">> => ClientInfo
     },
     PaymentParamsExtId = PaymentParamsNoExtId#{<<"externalID">> => <<"ext_id">>},
-    ResultExtId0  = capi_client_tokens:create_payment_resource(?config(context, Config), PaymentParamsExtId),
-    ResultExtId1  = capi_client_tokens:create_payment_resource(?config(context, Config), PaymentParamsExtId),
+    ResultExtId0 = capi_client_tokens:create_payment_resource(?config(context, Config), PaymentParamsExtId),
+    ResultExtId1 = capi_client_tokens:create_payment_resource(?config(context, Config), PaymentParamsExtId),
     ResultNoExtId = capi_client_tokens:create_payment_resource(?config(context, Config), PaymentParamsNoExtId),
     {ok, #{<<"paymentToolToken">> := TokenExtId0}} = ResultExtId0,
     {ok, #{<<"paymentToolToken">> := TokenExtId1}} = ResultExtId1,

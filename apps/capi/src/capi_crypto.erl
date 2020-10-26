@@ -11,9 +11,7 @@
 -export([create_encrypted_payment_tool_token/1]).
 -export([decrypt_payment_tool_token/1]).
 
--spec create_encrypted_payment_tool_token(payment_tool()) ->
-    encrypted_token().
-
+-spec create_encrypted_payment_tool_token(payment_tool()) -> encrypted_token().
 create_encrypted_payment_tool_token(PaymentTool) ->
     PaymentToolToken = encode_payment_tool_token(PaymentTool),
     ThriftType = {struct, union, {dmsl_payment_tool_token_thrift, 'PaymentToolToken'}},
@@ -36,9 +34,7 @@ decrypt_payment_tool_token(EncryptedToken) ->
 payment_tool_token_version() ->
     <<"v1">>.
 
--spec encode_payment_tool_token(payment_tool()) ->
-    payment_tool_token().
-
+-spec encode_payment_tool_token(payment_tool()) -> payment_tool_token().
 encode_payment_tool_token({bank_card, BankCard}) ->
     {bank_card_payload, #ptt_BankCardPayload{
         bank_card = BankCard

@@ -70,25 +70,27 @@ start_capi(Config) ->
 start_capi(Config, ExtraEnv) ->
     JwkPublSource = {json, {file, get_keysource("keys/local/jwk.publ.json", Config)}},
     JwkPrivSource = {json, {file, get_keysource("keys/local/jwk.priv.json", Config)}},
-    CapiEnv = ExtraEnv ++ [
-        {ip, ?CAPI_IP},
-        {port, ?CAPI_PORT},
-        {service_type, real},
-        {access_conf, #{
-            jwt => #{
-                keyset => #{
-                    capi_pcidss => {pem_file, get_keysource("keys/local/private.pem", Config)}
-                }
-            }
-        }},
-        {lechiffre_opts,  #{
-            encryption_source => JwkPublSource,
-            decryption_sources => [JwkPrivSource]
-        }},
-        {validation, #{
-            now => {{2020, 3, 1}, {0, 0, 0}}
-        }}
-    ],
+    CapiEnv =
+        ExtraEnv ++
+            [
+                {ip, ?CAPI_IP},
+                {port, ?CAPI_PORT},
+                {service_type, real},
+                {access_conf, #{
+                    jwt => #{
+                        keyset => #{
+                            capi_pcidss => {pem_file, get_keysource("keys/local/private.pem", Config)}
+                        }
+                    }
+                }},
+                {lechiffre_opts, #{
+                    encryption_source => JwkPublSource,
+                    decryption_sources => [JwkPrivSource]
+                }},
+                {validation, #{
+                    now => {{2020, 3, 1}, {0, 0, 0}}
+                }}
+            ],
     start_app(capi_pcidss, CapiEnv).
 
 -spec get_keysource(_, config()) -> _.
