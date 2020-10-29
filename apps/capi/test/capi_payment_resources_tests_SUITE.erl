@@ -51,7 +51,8 @@
     authorization_far_future_deadline_ok_test/1,
     authorization_error_no_header_test/1,
     authorization_error_no_permission_test/1,
-    authorization_bad_token_error_test/1
+    authorization_bad_token_error_test/1,
+    check_support_decrypt_v1_test/1
 ]).
 
 -define(CAPI_PORT, 8080).
@@ -119,7 +120,8 @@ groups() ->
             authorization_far_future_deadline_ok_test,
             authorization_error_no_header_test,
             authorization_error_no_permission_test,
-            authorization_bad_token_error_test
+            authorization_bad_token_error_test,
+            check_support_decrypt_v1_test
         ]},
         {ip_replacement_allowed, [], [
             ip_replacement_allowed_test
@@ -625,10 +627,7 @@ create_mobile_payment_resource_ok_test(Config) ->
         maps:get(<<"paymentToolDetails">>, Res)
     ),
     PaymentToolToken = maps:get(<<"paymentToolToken">>, Res),
-    {ok,
-        {mobile_commerce_payload, #ptt_MobileCommercePayload{
-            mobile_commerce = MobileCommerce
-        }}} = capi_crypto:decrypt_payment_tool_token(PaymentToolToken),
+    {mobile_commerce, MobileCommerce} = decrypt_payment_tool_token(PaymentToolToken),
 
     ?assertEqual(
         #domain_MobileCommerce{
@@ -860,11 +859,15 @@ create_googlepay_plain_payment_resource_ok_test(Config) ->
     false = maps:is_key(<<"tokenProvider">>, Details),
     %% is_cvv_empty = true for GooglePay tokenized plain bank card
     %% see capi_handler_tokens:set_is_empty_cvv/2 for more info
-    {ok,
-        {bank_card_payload, #ptt_BankCardPayload{
-            bank_card = #domain_BankCard{is_cvv_empty = true}
-        }}} =
-        capi_crypto:decrypt_payment_tool_token(PaymentToolToken).
+    {bank_card, BankCard} = decrypt_payment_tool_token(PaymentToolToken),
+    ?assertMatch(
+        #domain_BankCard{
+            payment_system = mastercard,
+            last_digits = <<"7892">>,
+            is_cvv_empty = true
+        },
+        BankCard
+    ).
 
 %%
 
@@ -986,6 +989,28 @@ authorization_bad_token_error_test(Config) ->
         ?TEST_PAYMENT_TOOL_ARGS
     ).
 
+-spec check_support_decrypt_v1_test(config()) -> _.
+check_support_decrypt_v1_test(_Config) ->
+    PaymentToolToken = <<
+        "v1.eyJhbGciOiJFQ0RILUVTIiwiZW5jIjoiQTEyOEdDTSIsImVwayI6eyJhbGciOiJFQ0RILUVTIiwiY3J2IjoiUC0yNTYiLCJrdHkiOi"
+        "JFQyIsInVzZSI6ImVuYyIsIngiOiJaN0xCNXprLUtIaUd2OV9PS2lYLUZ6d1M3bE5Ob25iQm8zWlJnaWkxNEFBIiwieSI6IlFTdWVSb2I"
+        "tSjhJV1pjTmptRWxFMWlBckt4d1lHeFg5a01FMloxSXJKNVUifSwia2lkIjoia3hkRDBvclZQR29BeFdycUFNVGVRMFU1TVJvSzQ3dVp4"
+        "V2lTSmRnbzB0MCJ9..Zf3WXHtg0cg_Pg2J.wi8sq9RWZ-SO27G1sRrHAsJUALdLGniGGXNOtIGtLyppW_NYF3TSPJ-ehYzy.vRLMAbWtd"
+        "uC6jBO6F7-t_A"
+    >>,
+    {ok, {PaymentTool, ValidUntil}} = capi_crypto:decrypt_payment_tool_token(PaymentToolToken),
+    ?assertEqual(
+        {mobile_commerce, #domain_MobileCommerce{
+            phone = #domain_MobilePhone{
+                cc = <<"7">>,
+                ctn = <<"9210001122">>
+            },
+            operator = megafone
+        }},
+        PaymentTool
+    ),
+    ?assertEqual(undefined, ValidUntil).
+
 %%
 
 issue_dummy_token(ACL, Config) ->
@@ -1012,7 +1037,7 @@ issue_dummy_token(ACL, Config) ->
     Token.
 
 decrypt_payment_tool_token(PaymentToolToken) ->
-    {ok, PaymentTool} = capi_crypto:decrypt_payment_tool_token(PaymentToolToken),
+    {ok, {PaymentTool, _ValidUntil}} = capi_crypto:decrypt_payment_tool_token(PaymentToolToken),
     PaymentTool.
 
 get_keysource(Key, Config) ->
