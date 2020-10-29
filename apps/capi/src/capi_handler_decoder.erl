@@ -74,7 +74,7 @@ mask_phone_number(PhoneNumber) ->
 -spec decode_disposable_payment_resource(
     capi_handler_encoder:encode_data(),
     encrypted_token(),
-    woody:deadline()
+    capi_utils:deadline()
 ) -> decode_data().
 decode_disposable_payment_resource(Resource, EncryptedToken, TokenValidUntil) ->
     #domain_DisposablePaymentResource{payment_tool = PaymentTool, payment_session_id = SessionID} = Resource,
@@ -90,7 +90,7 @@ decode_disposable_payment_resource(Resource, EncryptedToken, TokenValidUntil) ->
 decode_deadline(undefined) ->
     undefined;
 decode_deadline(Deadline) ->
-    woody_deadline:to_binary(Deadline).
+    capi_utils:deadline_to_binary(Deadline).
 
 decode_client_info(undefined) ->
     undefined;

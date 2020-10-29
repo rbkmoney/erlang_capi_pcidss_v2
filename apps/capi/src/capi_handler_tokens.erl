@@ -50,7 +50,7 @@ process_request('CreatePaymentResource' = OperationID, Req, Context) ->
             payment_session_id = PaymentSessionID,
             client_info = capi_handler_encoder:encode_client_info(ClientInfo)
         },
-        TokenValidUntil = woody_deadline:from_timeout(payment_tool_token_lifetime()),
+        TokenValidUntil = capi_utils:deadline_from_timeout(payment_tool_token_lifetime()),
         EncryptedToken = capi_crypto:create_encrypted_payment_tool_token(PaymentTool, TokenValidUntil),
         {ok,
             {201, #{},
