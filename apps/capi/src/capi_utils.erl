@@ -7,6 +7,7 @@
 -export([deadline_to_binary/1]).
 -export([deadline_from_binary/1]).
 -export([deadline_from_timeout/1]).
+-export([deadline_is_reached/1]).
 
 -export([base64url_to_map/1]).
 -export([map_to_base64url/1]).
@@ -34,6 +35,10 @@ deadline_from_binary(Binary) ->
 -spec deadline_from_timeout(timeout()) -> deadline().
 deadline_from_timeout(Timeout) ->
     woody_deadline:from_timeout(Timeout).
+
+-spec deadline_is_reached(deadline()) -> boolean().
+deadline_is_reached(Deadline) ->
+    woody_deadline:is_reached(Deadline).
 
 -spec base64url_to_map(binary()) -> map() | no_return().
 base64url_to_map(Base64) when is_binary(Base64) ->

@@ -51,13 +51,17 @@
     authorization_far_future_deadline_ok_test/1,
     authorization_error_no_header_test/1,
     authorization_error_no_permission_test/1,
-    authorization_bad_token_error_test/1
+    authorization_bad_token_error_test/1,
+
+    valid_until_payment_resource_test/1,
+    check_support_decrypt_v1_test/1,
+    check_support_decrypt_v2_test/1
 ]).
 
 -define(CAPI_PORT, 8080).
 -define(CAPI_HOST_NAME, "localhost").
 -define(CAPI_URL, ?CAPI_HOST_NAME ++ ":" ++ integer_to_list(?CAPI_PORT)).
-
+-define(PAYMENT_TOOL_TOKEN_LIFETIME, <<"256ms">>).
 -define(IDEMPOTENT_KEY, <<"capi/CreatePaymentResource/TEST/ext_id">>).
 
 -define(TEST_PAYMENT_TOOL_ARGS, #{
@@ -87,7 +91,8 @@ init([]) ->
 all() ->
     [
         {group, payment_resources},
-        {group, ip_replacement_allowed}
+        {group, ip_replacement_allowed},
+        {group, payment_tool_token_support}
     ].
 
 -spec groups() -> [{group_name(), list(), [test_case_name()]}].
@@ -123,6 +128,11 @@ groups() ->
         ]},
         {ip_replacement_allowed, [], [
             ip_replacement_allowed_test
+        ]},
+        {payment_tool_token_support, [], [
+            valid_until_payment_resource_test,
+            check_support_decrypt_v1_test,
+            check_support_decrypt_v2_test
         ]}
     ].
 
@@ -150,12 +160,23 @@ init_per_group(payment_resources, Config) ->
 init_per_group(ip_replacement_allowed, Config) ->
     ExtraProperties = #{<<"ip_replacement_allowed">> => true},
     Token = capi_ct_helper:issue_token(?STRING, [{[payment_resources], write}], unlimited, ExtraProperties),
-    [{context, capi_ct_helper:get_context(Token)} | Config].
+    [{context, capi_ct_helper:get_context(Token)} | Config];
+init_per_group(payment_tool_token_support, Config) ->
+    Save = application:get_env(capi_pcidss, payment_tool_token_lifetime, undefined),
+    application:set_env(capi_pcidss, payment_tool_token_lifetime, ?PAYMENT_TOOL_TOKEN_LIFETIME),
+    init_per_group(payment_resources, [{payment_tool_token_lifetime, Save} | Config]).
 
 -spec end_per_group(group_name(), config()) -> _.
 end_per_group(_Group, C) ->
     proplists:delete(context, C),
-    ok.
+    case lists:keysearch(payment_tool_token_lifetime, 1, C) of
+        {value, {_, undefined}} ->
+            application:unset_env(capi_pcidss, payment_tool_token_lifetime);
+        {value, {_, Save}} ->
+            application:set_env(capi_pcidss, payment_tool_token_lifetime, Save);
+        _ ->
+            ok
+    end.
 
 -spec init_per_testcase(test_case_name(), config()) -> config().
 init_per_testcase(_Name, C) ->
@@ -986,6 +1007,73 @@ authorization_bad_token_error_test(Config) ->
         capi_ct_helper:get_context(Token),
         ?TEST_PAYMENT_TOOL_ARGS
     ).
+
+-spec valid_until_payment_resource_test(_) -> _.
+valid_until_payment_resource_test(Config) ->
+    {ok, #{
+        <<"paymentToolToken">> := PaymentToolToken,
+        <<"validUntil">> := ValidUntil
+    }} = capi_client_tokens:create_payment_resource(?config(context, Config), #{
+        <<"paymentTool">> => #{
+            <<"paymentToolType">> => <<"CryptoWalletData">>,
+            <<"cryptoCurrency">> => <<"bitcoinCash">>
+        },
+        <<"clientInfo">> => #{
+            <<"fingerprint">> =>
+                <<"test fingerprint">>
+        }
+    }),
+    Deadline = capi_utils:deadline_from_binary(ValidUntil),
+    ?assertEqual(false, capi_utils:deadline_is_reached(Deadline)),
+    {ok, TokenLifetime} = capi_utils:parse_lifetime(?PAYMENT_TOOL_TOKEN_LIFETIME),
+    timer:sleep(2 * TokenLifetime),
+    ?assertEqual(true, capi_utils:deadline_is_reached(Deadline)),
+    {ok, {_PaymentTool, TokenDeadline}} = capi_crypto:decrypt_payment_tool_token(PaymentToolToken),
+    ?assertEqual(Deadline, TokenDeadline).
+
+-spec check_support_decrypt_v1_test(config()) -> _.
+check_support_decrypt_v1_test(_Config) ->
+    PaymentToolToken = <<
+        "v1.eyJhbGciOiJFQ0RILUVTIiwiZW5jIjoiQTEyOEdDTSIsImVwayI6eyJhbGciOiJFQ0RILUVTIiwiY3J2IjoiUC0yNTYiLCJrdHkiOi"
+        "JFQyIsInVzZSI6ImVuYyIsIngiOiJaN0xCNXprLUtIaUd2OV9PS2lYLUZ6d1M3bE5Ob25iQm8zWlJnaWkxNEFBIiwieSI6IlFTdWVSb2I"
+        "tSjhJV1pjTmptRWxFMWlBckt4d1lHeFg5a01FMloxSXJKNVUifSwia2lkIjoia3hkRDBvclZQR29BeFdycUFNVGVRMFU1TVJvSzQ3dVp4"
+        "V2lTSmRnbzB0MCJ9..Zf3WXHtg0cg_Pg2J.wi8sq9RWZ-SO27G1sRrHAsJUALdLGniGGXNOtIGtLyppW_NYF3TSPJ-ehYzy.vRLMAbWtd"
+        "uC6jBO6F7-t_A"
+    >>,
+    {ok, {PaymentTool, ValidUntil}} = capi_crypto:decrypt_payment_tool_token(PaymentToolToken),
+    ?assertEqual(
+        {mobile_commerce, #domain_MobileCommerce{
+            phone = #domain_MobilePhone{
+                cc = <<"7">>,
+                ctn = <<"9210001122">>
+            },
+            operator = megafone
+        }},
+        PaymentTool
+    ),
+    ?assertEqual(undefined, ValidUntil).
+
+-spec check_support_decrypt_v2_test(config()) -> _.
+check_support_decrypt_v2_test(_Config) ->
+    PaymentToolToken = <<
+        "v2.eyJhbGciOiJFQ0RILUVTIiwiZW5jIjoiQTEyOEdDTSIsImVwayI6eyJhbGciOiJFQ0RILUVTIiwiY3J2IjoiUC0yNTYiLCJrdHkiOi"
+        "JFQyIsInVzZSI6ImVuYyIsIngiOiJRanFmNFVrOTJGNzd3WXlEUjNqY3NwR2dpYnJfdVRmSXpMUVplNzVQb1R3IiwieSI6InA5cjJGV3F"
+        "mU2xBTFJXYWhUSk8xY3VneVZJUXVvdzRwMGdHNzFKMFJkUVEifSwia2lkIjoia3hkRDBvclZQR29BeFdycUFNVGVRMFU1TVJvSzQ3dVp4"
+        "V2lTSmRnbzB0MCJ9..j3zEyCqyfQjpEtQM.JAc3kqJm6zbn0fMZGlK_t14Yt4PvgOuoVL2DtkEgIXIqrxxWFbykKBGxQvwYisJYIUJJwt"
+        "YbwvuGEODcK2uTC2quPD2Ejew66DLJF2xcAwE.MNVimzi8r-5uTATNalgoBQ"
+    >>,
+    {ok, {PaymentTool, ValidUntil}} = capi_crypto:decrypt_payment_tool_token(PaymentToolToken),
+    ?assertEqual(
+        {mobile_commerce, #domain_MobileCommerce{
+            phone = #domain_MobilePhone{
+                cc = <<"7">>,
+                ctn = <<"9210001122">>
+            },
+            operator = megafone
+        }},
+        PaymentTool
+    ),
+    ?assertEqual(<<"2020-10-29T23:44:15.499Z">>, capi_utils:deadline_to_binary(ValidUntil)).
 
 %%
 
