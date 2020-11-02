@@ -13,7 +13,7 @@
 -import(capi_handler_utils, [logic_error/2, validation_error/1]).
 
 -define(CAPI_NS, <<"com.rbkmoney.capi">>).
--define(DEFAULT_PAYMENT_TOOL_TOKEN_LIFETIME, undefined).
+-define(DEFAULT_PAYMENT_TOOL_TOKEN_LIFETIME, <<"64m">>).
 
 -spec process_request(
     OperationID :: capi_handler:operation_id(),

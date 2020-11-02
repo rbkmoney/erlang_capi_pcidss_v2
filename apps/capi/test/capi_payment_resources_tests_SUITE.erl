@@ -54,14 +54,13 @@
     authorization_bad_token_error_test/1,
 
     valid_until_payment_resource_test/1,
-    check_support_decrypt_v1_test/1,
     check_support_decrypt_v2_test/1
 ]).
 
 -define(CAPI_PORT, 8080).
 -define(CAPI_HOST_NAME, "localhost").
 -define(CAPI_URL, ?CAPI_HOST_NAME ++ ":" ++ integer_to_list(?CAPI_PORT)).
--define(PAYMENT_TOOL_TOKEN_LIFETIME, <<"256ms">>).
+
 -define(IDEMPOTENT_KEY, <<"capi/CreatePaymentResource/TEST/ext_id">>).
 
 -define(TEST_PAYMENT_TOOL_ARGS, #{
@@ -91,8 +90,7 @@ init([]) ->
 all() ->
     [
         {group, payment_resources},
-        {group, ip_replacement_allowed},
-        {group, payment_tool_token_support}
+        {group, ip_replacement_allowed}
     ].
 
 -spec groups() -> [{group_name(), list(), [test_case_name()]}].
@@ -124,15 +122,13 @@ groups() ->
             authorization_far_future_deadline_ok_test,
             authorization_error_no_header_test,
             authorization_error_no_permission_test,
-            authorization_bad_token_error_test
+            authorization_bad_token_error_test,
+
+            valid_until_payment_resource_test,
+            check_support_decrypt_v2_test
         ]},
         {ip_replacement_allowed, [], [
             ip_replacement_allowed_test
-        ]},
-        {payment_tool_token_support, [], [
-            valid_until_payment_resource_test,
-            check_support_decrypt_v1_test,
-            check_support_decrypt_v2_test
         ]}
     ].
 
@@ -160,23 +156,12 @@ init_per_group(payment_resources, Config) ->
 init_per_group(ip_replacement_allowed, Config) ->
     ExtraProperties = #{<<"ip_replacement_allowed">> => true},
     Token = capi_ct_helper:issue_token(?STRING, [{[payment_resources], write}], unlimited, ExtraProperties),
-    [{context, capi_ct_helper:get_context(Token)} | Config];
-init_per_group(payment_tool_token_support, Config) ->
-    Save = application:get_env(capi_pcidss, payment_tool_token_lifetime, undefined),
-    application:set_env(capi_pcidss, payment_tool_token_lifetime, ?PAYMENT_TOOL_TOKEN_LIFETIME),
-    init_per_group(payment_resources, [{payment_tool_token_lifetime, Save} | Config]).
+    [{context, capi_ct_helper:get_context(Token)} | Config].
 
 -spec end_per_group(group_name(), config()) -> _.
 end_per_group(_Group, C) ->
     proplists:delete(context, C),
-    case lists:keysearch(payment_tool_token_lifetime, 1, C) of
-        {value, {_, undefined}} ->
-            application:unset_env(capi_pcidss, payment_tool_token_lifetime);
-        {value, {_, Save}} ->
-            application:set_env(capi_pcidss, payment_tool_token_lifetime, Save);
-        _ ->
-            ok
-    end.
+    ok.
 
 -spec init_per_testcase(test_case_name(), config()) -> config().
 init_per_testcase(_Name, C) ->
@@ -1010,6 +995,9 @@ authorization_bad_token_error_test(Config) ->
 
 -spec valid_until_payment_resource_test(_) -> _.
 valid_until_payment_resource_test(Config) ->
+    {ok, TokenLifetimeBin} = application:get_env(capi_pcidss, payment_tool_token_lifetime),
+    {ok, TokenLifetime} = capi_utils:parse_lifetime(TokenLifetimeBin),
+    DeadlineBefor = capi_utils:deadline_from_timeout(TokenLifetime),
     {ok, #{
         <<"paymentToolToken">> := PaymentToolToken,
         <<"validUntil">> := ValidUntil
@@ -1023,35 +1011,12 @@ valid_until_payment_resource_test(Config) ->
                 <<"test fingerprint">>
         }
     }),
+    DeadlineAfter = capi_utils:deadline_from_timeout(TokenLifetime),
+    {ok, {_PaymentTool, DeadlineToken}} = capi_crypto:decrypt_payment_tool_token(PaymentToolToken),
     Deadline = capi_utils:deadline_from_binary(ValidUntil),
-    ?assertEqual(false, capi_utils:deadline_is_reached(Deadline)),
-    {ok, TokenLifetime} = capi_utils:parse_lifetime(?PAYMENT_TOOL_TOKEN_LIFETIME),
-    timer:sleep(2 * TokenLifetime),
-    ?assertEqual(true, capi_utils:deadline_is_reached(Deadline)),
-    {ok, {_PaymentTool, TokenDeadline}} = capi_crypto:decrypt_payment_tool_token(PaymentToolToken),
-    ?assertEqual(Deadline, TokenDeadline).
-
--spec check_support_decrypt_v1_test(config()) -> _.
-check_support_decrypt_v1_test(_Config) ->
-    PaymentToolToken = <<
-        "v1.eyJhbGciOiJFQ0RILUVTIiwiZW5jIjoiQTEyOEdDTSIsImVwayI6eyJhbGciOiJFQ0RILUVTIiwiY3J2IjoiUC0yNTYiLCJrdHkiOi"
-        "JFQyIsInVzZSI6ImVuYyIsIngiOiJaN0xCNXprLUtIaUd2OV9PS2lYLUZ6d1M3bE5Ob25iQm8zWlJnaWkxNEFBIiwieSI6IlFTdWVSb2I"
-        "tSjhJV1pjTmptRWxFMWlBckt4d1lHeFg5a01FMloxSXJKNVUifSwia2lkIjoia3hkRDBvclZQR29BeFdycUFNVGVRMFU1TVJvSzQ3dVp4"
-        "V2lTSmRnbzB0MCJ9..Zf3WXHtg0cg_Pg2J.wi8sq9RWZ-SO27G1sRrHAsJUALdLGniGGXNOtIGtLyppW_NYF3TSPJ-ehYzy.vRLMAbWtd"
-        "uC6jBO6F7-t_A"
-    >>,
-    {ok, {PaymentTool, ValidUntil}} = capi_crypto:decrypt_payment_tool_token(PaymentToolToken),
-    ?assertEqual(
-        {mobile_commerce, #domain_MobileCommerce{
-            phone = #domain_MobilePhone{
-                cc = <<"7">>,
-                ctn = <<"9210001122">>
-            },
-            operator = megafone
-        }},
-        PaymentTool
-    ),
-    ?assertEqual(undefined, ValidUntil).
+    ?assertEqual(true, DeadlineBefor < Deadline),
+    ?assertEqual(true, Deadline < DeadlineAfter),
+    ?assertEqual(Deadline, DeadlineToken).
 
 -spec check_support_decrypt_v2_test(config()) -> _.
 check_support_decrypt_v2_test(_Config) ->

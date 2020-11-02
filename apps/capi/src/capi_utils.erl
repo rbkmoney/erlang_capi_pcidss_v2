@@ -65,11 +65,9 @@ parse_deadline(DeadlineStr) ->
     ],
     try_parse_deadline(DeadlineStr, Parsers).
 
--spec parse_lifetime
-    (binary()) -> {ok, timeout()} | {error, bad_lifetime};
-    (undefined) -> {ok, infinity}.
+-spec parse_lifetime(binary()) -> {ok, timeout()} | {error, bad_lifetime}.
 parse_lifetime(undefined) ->
-    {ok, infinity};
+    {error, bad_lifetime};
 parse_lifetime(Bin) ->
     %% lifetime string like '1ms', '30s', '2.6m' etc
     %% default unit - millisecond
@@ -182,7 +180,7 @@ parse_deadline_test() ->
 parse_lifetime_test() ->
     {ok, 16 * 1000} = parse_lifetime(<<"16s">>),
     {ok, 32 * 60 * 1000} = parse_lifetime(<<"32m">>),
-    {ok, infinity} = parse_lifetime(undefined),
+    {error, bad_lifetime} = parse_lifetime(undefined),
     {error, bad_lifetime} = parse_lifetime(<<"64h">>).
 
 -endif.
