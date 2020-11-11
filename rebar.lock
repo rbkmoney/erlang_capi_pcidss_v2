@@ -36,7 +36,7 @@
  {<<"cowlib">>,{pkg,<<"cowlib">>,<<"2.8.0">>},1},
  {<<"damsel">>,
   {git,"git@github.com:rbkmoney/damsel.git",
-       {ref,"a6c9401d85b856df783ed715f70304e7e104f052"}},
+       {ref,"7063eec1d614fcf7dd5db0523b8c543809a7dfe1"}},
   0},
  {<<"email_validator">>,
   {git,"https://github.com/rbkmoney/email_validator.git",
@@ -72,7 +72,7 @@
  {<<"jose">>,{pkg,<<"jose">>,<<"1.7.9">>},1},
  {<<"jsx">>,{pkg,<<"jsx">>,<<"2.8.2">>},0},
  {<<"lechiffre">>,
-     {git,"git@github.com:rbkmoney/lechiffre.git",
+  {git,"git@github.com:rbkmoney/lechiffre.git",
        {ref,"da5b6e85f67ce39d6da07d8efa1cd426ac9ce8e7"}},
   0},
  {<<"metrics">>,{pkg,<<"metrics">>,<<"1.0.1">>},1},
@@ -97,6 +97,7 @@
  {<<"prometheus_cowboy">>,{pkg,<<"prometheus_cowboy">>,<<"0.1.8">>},0},
  {<<"prometheus_httpd">>,{pkg,<<"prometheus_httpd">>,<<"2.1.11">>},1},
  {<<"ranch">>,{pkg,<<"ranch">>,<<"1.7.1">>},1},
+ {<<"rfc3339">>,{pkg,<<"rfc3339">>,<<"0.2.2">>},0},
  {<<"scoper">>,
   {git,"git@github.com:rbkmoney/scoper.git",
        {ref,"95643f40dd628c77f33f12be96cf1c39dccc9683"}},
@@ -147,6 +148,7 @@
  {<<"prometheus_cowboy">>, <<"CFCE0BC7B668C5096639084FCD873826E6220EA714BF60A716F5BD080EF2A99C">>},
  {<<"prometheus_httpd">>, <<"F616ED9B85B536B195D94104063025A91F904A4CFC20255363F49A197D96C896">>},
  {<<"ranch">>, <<"6B1FAB51B49196860B733A49C07604465A47BDB78AA10C1C16A3D199F7F8C881">>},
+ {<<"rfc3339">>, <<"1552DF616ACA368D982E9F085A0E933B6688A3F4938A671798978EC2C0C58730">>},
  {<<"ssl_verify_fun">>, <<"F0EAFFF810D2041E93F915EF59899C923F4568F4585904D010387ED74988E77B">>},
  {<<"unicode_util_compat">>, <<"D869E4C68901DD9531385BB0C8C40444EBF624E60B6962D95952775CAC5E90CD">>}]},
 {pkg_hash_ext,[
@@ -168,6 +170,7 @@
  {<<"prometheus_cowboy">>, <<"BA286BECA9302618418892D37BCD5DC669A6CC001F4EB6D6AF85FF81F3F4F34C">>},
  {<<"prometheus_httpd">>, <<"0BBE831452CFDF9588538EB2F570B26F30C348ADAE5E95A7D87F35A5910BCF92">>},
  {<<"ranch">>, <<"451D8527787DF716D99DC36162FCA05934915DB0B6141BBDAC2EA8D3C7AFC7D7">>},
+ {<<"rfc3339">>, <<"986D7F9BAC6891AA4D5051690058DE4E623245620BBEADA7F239F85C4DF8F23C">>},
  {<<"ssl_verify_fun">>, <<"603561DC0FD62F4F2EA9B890F4E20E1A0D388746D6E20557CAFB1B16950DE88C">>},
  {<<"unicode_util_compat">>, <<"1D1848C40487CDB0B30E8ED975E34E025860C02E419CB615D255849F3427439D">>}]}
 ].
