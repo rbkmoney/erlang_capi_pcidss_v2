@@ -87,7 +87,7 @@
 init([]) ->
     {ok, {#{strategy => one_for_all, intensity => 1, period => 1}, []}}.
 
--spec all() -> [test_case_name()].
+-spec all() -> [{group, test_case_name()}].
 all() ->
     [
         {group, payment_resources},
@@ -148,7 +148,7 @@ init_per_suite(Config) ->
 -spec end_per_suite(config()) -> _.
 end_per_suite(C) ->
     _ = capi_ct_helper:stop_mocked_service_sup(?config(suite_test_sup, C)),
-    [application:stop(App) || App <- proplists:get_value(apps, C)],
+    _ = [application:stop(App) || App <- proplists:get_value(apps, C)],
     ok.
 
 -spec init_per_group(group_name(), config()) -> config().
@@ -162,8 +162,7 @@ init_per_group(ip_replacement_allowed, Config) ->
 
 -spec end_per_group(group_name(), config()) -> _.
 end_per_group(_Group, C) ->
-    proplists:delete(context, C),
-    ok.
+    proplists:delete(context, C).
 
 -spec init_per_testcase(test_case_name(), config()) -> config().
 init_per_testcase(_Name, C) ->
@@ -172,13 +171,13 @@ init_per_testcase(_Name, C) ->
 -spec end_per_testcase(test_case_name(), config()) -> config().
 end_per_testcase(_Name, C) ->
     capi_ct_helper:stop_mocked_service_sup(?config(test_sup, C)),
-    ok.
+    proplists:delete(test_sup, C).
 
 %%% Tests
 
 -spec create_visa_payment_resource_ok_test(_) -> _.
 create_visa_payment_resource_ok_test(Config) ->
-    capi_ct_helper:mock_services(
+    _ = capi_ct_helper:mock_services(
         [
             {cds_storage, fun
                 ('PutSession', _) ->
@@ -224,7 +223,7 @@ create_visa_payment_resource_ok_test(Config) ->
 
 -spec expiration_date_fail_test(_) -> _.
 expiration_date_fail_test(Config) ->
-    capi_ct_helper:mock_services(
+    _ = capi_ct_helper:mock_services(
         [
             {cds_storage, fun
                 ('PutSession', _) ->
@@ -267,7 +266,7 @@ expiration_date_fail_test(Config) ->
 
 -spec create_payment_resource_invalid_cardholder_test(_) -> _.
 create_payment_resource_invalid_cardholder_test(Config) ->
-    capi_ct_helper:mock_services(
+    _ = capi_ct_helper:mock_services(
         [
             {cds_storage, fun
                 ('PutSession', _) ->
@@ -322,7 +321,7 @@ create_payment_resource_invalid_cardholder_test(Config) ->
 
 -spec create_visa_with_empty_cvv_ok_test(_) -> _.
 create_visa_with_empty_cvv_ok_test(Config) ->
-    capi_ct_helper:mock_services(
+    _ = capi_ct_helper:mock_services(
         [
             {cds_storage, fun
                 ('PutSession', _) ->
@@ -367,7 +366,7 @@ create_visa_with_empty_cvv_ok_test(Config) ->
 
 -spec create_visa_with_wrong_cvv_test(_) -> _.
 create_visa_with_wrong_cvv_test(Config) ->
-    capi_ct_helper:mock_services(
+    _ = capi_ct_helper:mock_services(
         [
             {bender, fun('GenerateID', _) -> {ok, capi_ct_helper_bender:get_result(<<"bender_key">>)} end},
             {binbase, fun('Lookup', _) -> {ok, ?BINBASE_LOOKUP_RESULT(<<"VISA">>)} end}
@@ -393,7 +392,7 @@ create_visa_with_wrong_cvv_test(Config) ->
 
 -spec create_visa_with_wrong_cardnumber_test(_) -> _.
 create_visa_with_wrong_cardnumber_test(Config) ->
-    capi_ct_helper:mock_services(
+    _ = capi_ct_helper:mock_services(
         [
             {bender, fun('GenerateID', _) -> {ok, capi_ct_helper_bender:get_result(<<"bender_key">>)} end},
             {binbase, fun('Lookup', _) -> {ok, ?BINBASE_LOOKUP_RESULT(<<"VISA">>)} end}
@@ -420,7 +419,7 @@ create_visa_with_wrong_cardnumber_test(Config) ->
 -spec create_visa_payment_resource_idemp_ok_test(_) -> _.
 create_visa_payment_resource_idemp_ok_test(Config) ->
     ExternalID = <<"Degusi :P">>,
-    capi_ct_helper:mock_services(
+    _ = capi_ct_helper:mock_services(
         [
             {cds_storage, fun
                 ('PutSession', _) ->
@@ -484,7 +483,7 @@ create_visa_payment_resource_idemp_fail_test(Config) ->
     Token1 = <<"TOKEN1">>,
     Token2 = <<"TOKEN2">>,
     Ctx = capi_msgp_marshalling:marshal(#{<<"params_hash">> => erlang:phash2(Token1)}),
-    capi_ct_helper:mock_services(
+    _ = capi_ct_helper:mock_services(
         [
             {cds_storage, fun
                 ('PutSession', _) ->
@@ -548,7 +547,7 @@ create_visa_payment_resource_idemp_fail_test(Config) ->
 
 -spec create_nspkmir_payment_resource_ok_test(_) -> _.
 create_nspkmir_payment_resource_ok_test(Config) ->
-    capi_ct_helper:mock_services(
+    _ = capi_ct_helper:mock_services(
         [
             {cds_storage, fun
                 ('PutSession', _) ->
@@ -610,7 +609,7 @@ create_euroset_payment_resource_ok_test(Config) ->
 
 -spec create_mobile_payment_resource_ok_test(_) -> _.
 create_mobile_payment_resource_ok_test(Config) ->
-    capi_ct_helper:mock_services(
+    _ = capi_ct_helper:mock_services(
         [
             {moneypenny, fun('Lookup', _) -> {ok, capi_ct_mnp_helper:get_result()} end}
         ],
@@ -667,7 +666,7 @@ create_qw_payment_resource_ok_test(Config) ->
 -spec create_qw_payment_resource_with_access_token_generates_different_payment_token(_) -> _.
 create_qw_payment_resource_with_access_token_generates_different_payment_token(Config) ->
     BenderResult = capi_ct_helper_bender:get_result(<<"benderkey">>),
-    capi_ct_helper:mock_services(
+    _ = capi_ct_helper:mock_services(
         [
             {bender, fun('GenerateID', _) -> {ok, BenderResult} end},
             {tds_storage, fun('PutToken', _) -> {ok, ok} end}
@@ -702,7 +701,7 @@ create_qw_payment_resource_with_access_token_generates_different_payment_token(C
 create_qw_payment_resource_with_access_token_depends_on_external_id(Config) ->
     BenderResultExtID = capi_ct_helper_bender:get_result(<<"benderkey0">>),
     BenderResultNoExtId = capi_ct_helper_bender:get_result(<<"benderkey1">>),
-    capi_ct_helper:mock_services(
+    _ = capi_ct_helper:mock_services(
         [
             {bender, fun
                 ('GenerateID', {?IDEMPOTENT_KEY, _, _}) -> {ok, BenderResultExtID};
@@ -753,7 +752,7 @@ create_crypto_payment_resource_ok_test(Config) ->
 
 -spec create_applepay_tokenized_payment_resource_ok_test(_) -> _.
 create_applepay_tokenized_payment_resource_ok_test(Config) ->
-    capi_ct_helper:mock_services(
+    _ = capi_ct_helper:mock_services(
         [
             {payment_tool_provider_apple_pay, fun('Unwrap', _) -> {ok, ?UNWRAPPED_PAYMENT_TOOL(?APPLE_PAY_DETAILS)} end},
             {cds_storage, fun
@@ -786,7 +785,7 @@ create_applepay_tokenized_payment_resource_ok_test(Config) ->
 
 -spec create_googlepay_tokenized_payment_resource_ok_test(_) -> _.
 create_googlepay_tokenized_payment_resource_ok_test(Config) ->
-    capi_ct_helper:mock_services(
+    _ = capi_ct_helper:mock_services(
         [
             {payment_tool_provider_google_pay, fun('Unwrap', _) ->
                 {ok, ?UNWRAPPED_PAYMENT_TOOL(?GOOGLE_PAY_DETAILS)}
@@ -822,7 +821,7 @@ create_googlepay_tokenized_payment_resource_ok_test(Config) ->
 
 -spec create_googlepay_plain_payment_resource_ok_test(_) -> _.
 create_googlepay_plain_payment_resource_ok_test(Config) ->
-    capi_ct_helper:mock_services(
+    _ = capi_ct_helper:mock_services(
         [
             {payment_tool_provider_google_pay, fun('Unwrap', _) ->
                 {ok,
@@ -877,7 +876,7 @@ create_googlepay_plain_payment_resource_ok_test(Config) ->
 
 -spec create_yandexpay_tokenized_payment_resource_ok_test(_) -> _.
 create_yandexpay_tokenized_payment_resource_ok_test(Config) ->
-    capi_ct_helper:mock_services(
+    _ = capi_ct_helper:mock_services(
         [
             {payment_tool_provider_yandex_pay, fun('Unwrap', _) ->
                 {ok, ?UNWRAPPED_PAYMENT_TOOL(?YANDEX_PAY_DETAILS)}
@@ -951,7 +950,7 @@ ip_replacement_allowed_test(Config) ->
 
 -spec authorization_positive_lifetime_ok_test(config()) -> _.
 authorization_positive_lifetime_ok_test(Config) ->
-    capi_ct_helper:mock_services(
+    _ = capi_ct_helper:mock_services(
         [
             {cds_storage, fun
                 ('PutSession', _) -> {ok, ok};
@@ -970,7 +969,7 @@ authorization_positive_lifetime_ok_test(Config) ->
 
 -spec authorization_unlimited_lifetime_ok_test(config()) -> _.
 authorization_unlimited_lifetime_ok_test(Config) ->
-    capi_ct_helper:mock_services(
+    _ = capi_ct_helper:mock_services(
         [
             {cds_storage, fun
                 ('PutSession', _) -> {ok, ok};
@@ -989,7 +988,7 @@ authorization_unlimited_lifetime_ok_test(Config) ->
 
 -spec authorization_far_future_deadline_ok_test(config()) -> _.
 authorization_far_future_deadline_ok_test(Config) ->
-    capi_ct_helper:mock_services(
+    _ = capi_ct_helper:mock_services(
         [
             {cds_storage, fun
                 ('PutSession', _) -> {ok, ok};

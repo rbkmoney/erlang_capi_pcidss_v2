@@ -66,7 +66,9 @@ parse_deadline(DeadlineStr) ->
     ],
     try_parse_deadline(DeadlineStr, Parsers).
 
--spec parse_lifetime(binary()) -> {ok, timeout()} | {error, bad_lifetime}.
+-spec parse_lifetime
+    (binary()) -> {ok, timeout()} | {error, bad_lifetime};
+    (undefined) -> {error, bad_lifetime}.
 parse_lifetime(undefined) ->
     {error, bad_lifetime};
 parse_lifetime(Bin) ->
