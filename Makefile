@@ -20,7 +20,7 @@ BASE_IMAGE_NAME := service-erlang
 BASE_IMAGE_TAG := b2c2a3f8c46842488eef78a2574ba880eeff07b9
 
 BUILD_IMAGE_NAME := build-erlang
-BUILD_IMAGE_TAG := c60896ef07d41e7ae2e5f9b6ce845a60ad79acc7
+BUILD_IMAGE_TAG := 1333d0926b203e00c47e4fad7e10d2252a020305
 
 CALL_ANYWHERE := \
 	submodules \
@@ -55,7 +55,7 @@ xref:
 	$(REBAR) xref
 
 lint: generate
-	elvis rock
+	elvis rock -V
 
 check_format:
 	$(REBAR) fmt -c
@@ -64,13 +64,10 @@ format:
 	$(REBAR) fmt -w
 
 dialyze:
-	$(REBAR) dialyzer
+	$(REBAR) as test dialyzer
 
 start: submodules
 	$(REBAR) run
-
-devrel: submodules
-	$(REBAR) release
 
 release: submodules generate
 	$(REBAR) as prod release
