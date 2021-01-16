@@ -185,9 +185,9 @@ create_visa_payment_resource_ok_test(Config) ->
                     {ok, ok};
                 (
                     'PutCard',
-                    [
+                    {
                         #cds_PutCardData{pan = <<"411111", _:6/binary, Mask:4/binary>>}
-                    ]
+                    }
                 ) ->
                     {ok, #cds_PutCardResult{
                         bank_card = #cds_BankCard{
@@ -231,9 +231,9 @@ expiration_date_fail_test(Config) ->
                     {ok, ok};
                 (
                     'PutCard',
-                    [
+                    {
                         #'cds_PutCardData'{pan = <<"411111", _:6/binary, Mask:4/binary>>}
-                    ]
+                    }
                 ) ->
                     {ok, #'cds_PutCardResult'{
                         bank_card = #cds_BankCard{
@@ -274,9 +274,9 @@ create_payment_resource_invalid_cardholder_test(Config) ->
                     {ok, ok};
                 (
                     'PutCard',
-                    [
+                    {
                         #cds_PutCardData{pan = <<"411111", _:6/binary, Mask:4/binary>>}
-                    ]
+                    }
                 ) ->
                     {ok, #cds_PutCardResult{
                         bank_card = #cds_BankCard{
@@ -329,9 +329,9 @@ create_visa_with_empty_cvv_ok_test(Config) ->
                     {ok, ok};
                 (
                     'PutCard',
-                    [
+                    {
                         #cds_PutCardData{pan = <<"411111", _:6/binary, Mask:4/binary>>}
-                    ]
+                    }
                 ) ->
                     {ok, #cds_PutCardResult{
                         bank_card = #cds_BankCard{
@@ -427,9 +427,9 @@ create_visa_payment_resource_idemp_ok_test(Config) ->
                     {ok, ok};
                 (
                     'PutCard',
-                    [
+                    {
                         #cds_PutCardData{pan = <<"411111", _:6/binary, Mask:4/binary>>}
-                    ]
+                    }
                 ) ->
                     {ok, #cds_PutCardResult{
                         bank_card = #cds_BankCard{
@@ -491,9 +491,9 @@ create_visa_payment_resource_idemp_fail_test(Config) ->
                     {ok, ok};
                 (
                     'PutCard',
-                    [
+                    {
                         #cds_PutCardData{pan = <<"532130", _:6/binary, LastDigits:4/binary>>}
-                    ]
+                    }
                 ) ->
                     {ok, #cds_PutCardResult{
                         bank_card = #cds_BankCard{
@@ -504,9 +504,9 @@ create_visa_payment_resource_idemp_fail_test(Config) ->
                     }};
                 (
                     'PutCard',
-                    [
+                    {
                         #cds_PutCardData{pan = <<"411111", _:6/binary, LastDigits:4/binary>>}
-                    ]
+                    }
                 ) ->
                     {ok, #cds_PutCardResult{
                         bank_card = #cds_BankCard{
@@ -555,9 +555,9 @@ create_nspkmir_payment_resource_ok_test(Config) ->
                     {ok, ok};
                 (
                     'PutCard',
-                    [
+                    {
                         #cds_PutCardData{pan = <<"22022002", _:6/binary, LastDigits:2/binary>>}
-                    ]
+                    }
                 ) ->
                     {ok, #cds_PutCardResult{
                         bank_card = #cds_BankCard{
@@ -705,7 +705,7 @@ create_qw_payment_resource_with_access_token_depends_on_external_id(Config) ->
     capi_ct_helper:mock_services(
         [
             {bender, fun
-                ('GenerateID', [?IDEMPOTENT_KEY | _]) -> {ok, BenderResultExtID};
+                ('GenerateID', {?IDEMPOTENT_KEY, _, _}) -> {ok, BenderResultExtID};
                 ('GenerateID', _Args) -> {ok, BenderResultNoExtId}
             end},
             {tds_storage, fun('PutToken', _) -> {ok, ok} end}
