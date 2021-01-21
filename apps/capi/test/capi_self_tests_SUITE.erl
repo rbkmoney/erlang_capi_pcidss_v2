@@ -110,10 +110,16 @@ oops_body_test(Config) ->
             {<<"Content-Type">>, <<"application/json; charset=UTF-8">>},
             {<<"X-Request-ID">>, list_to_binary(integer_to_list(rand:uniform(100000)))}
         ],
-        <<"{\"paymentTool\":\n"
-            "                {\"paymentToolType\":\"CardData\",\"cardNumber\":\"4242424242424242\",\"expDate\":\"12/20\"},\n"
-            "            \"clientInfo\":\n"
-            "                {\"fingerprint\":\"test\"}}">>,
+        <<
+            "{"
+            " \"paymentTool\":\n"
+            "   {\"paymentToolType\":\"CardData\","
+            "   \"cardNumber\":\"4242424242424242\","
+            "   \"expDate\":\"12/20\""
+            "   },\n"
+            " \"clientInfo\": {\"fingerprint\":\"test\"}"
+            "}"
+        >>,
         [
             with_body
         ]

@@ -754,7 +754,9 @@ create_crypto_payment_resource_ok_test(Config) ->
 create_applepay_tokenized_payment_resource_ok_test(Config) ->
     _ = capi_ct_helper:mock_services(
         [
-            {payment_tool_provider_apple_pay, fun('Unwrap', _) -> {ok, ?UNWRAPPED_PAYMENT_TOOL(?APPLE_PAY_DETAILS)} end},
+            {payment_tool_provider_apple_pay, fun('Unwrap', _) ->
+                {ok, ?UNWRAPPED_PAYMENT_TOOL(?APPLE_PAY_DETAILS)}
+            end},
             {cds_storage, fun
                 ('PutSession', _) -> {ok, ok};
                 ('PutCard', _) -> {ok, ?PUT_CARD_RESULT}
@@ -914,7 +916,8 @@ create_yandexpay_tokenized_payment_resource_ok_test(Config) ->
 
 -spec ip_replacement_not_allowed_test(_) -> _.
 ip_replacement_not_allowed_test(Config) ->
-    % In this case we have no ip_replacement_allowed field, perhaps we could also test token with this field set to false
+    % In this case we have no ip_replacement_allowed field,
+    % perhaps we could also test token with this field set to false
     ClientIP = <<"::ffff:42.42.42.42">>,
     ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>, <<"ip">> => ClientIP},
     {ok, Res} = capi_client_tokens:create_payment_resource(?config(context, Config), #{
