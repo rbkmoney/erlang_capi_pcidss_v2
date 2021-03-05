@@ -426,10 +426,12 @@ get_payment_token_provider({samsung, _}, _PaymentData) ->
 -define(PAYMENT_TOOL_PROVIDER_META_NS, <<"com.rbkmoney.payment-tool-provider">>).
 
 extract_payment_tool_provider_metadata({Provider, Details}) ->
-    Metadata = do_extract_payment_tool_provider_metadata(Details),
-    {?PAYMENT_TOOL_PROVIDER_META_NS, Metadata#{<<"provider">> => genlib:to_binary(Provider)}}.
+    {?PAYMENT_TOOL_PROVIDER_META_NS, #{
+        <<"provider">> => genlib:to_binary(Provider),
+        <<"payment_details">> => extract_payment_details_metadata(Details)
+    }}.
 
-do_extract_payment_tool_provider_metadata(#paytoolprv_ApplePayDetails{
+extract_payment_details_metadata(#paytoolprv_ApplePayDetails{
     transaction_id = TransactionID,
     device_id = DeviceID
 }) ->
@@ -437,19 +439,19 @@ do_extract_payment_tool_provider_metadata(#paytoolprv_ApplePayDetails{
         <<"transaction_id">> => TransactionID,
         <<"device_id">> => DeviceID
     };
-do_extract_payment_tool_provider_metadata(#paytoolprv_SamsungPayDetails{
+extract_payment_details_metadata(#paytoolprv_SamsungPayDetails{
     device_id = DeviceID
 }) ->
     #{
         <<"device_id">> => DeviceID
     };
-do_extract_payment_tool_provider_metadata(#paytoolprv_GooglePayDetails{
+extract_payment_details_metadata(#paytoolprv_GooglePayDetails{
     message_id = MessageID
 }) ->
     #{
         <<"message_id">> => MessageID
     };
-do_extract_payment_tool_provider_metadata(#paytoolprv_YandexPayDetails{
+extract_payment_details_metadata(#paytoolprv_YandexPayDetails{
     message_id = MessageID
 }) ->
     #{
