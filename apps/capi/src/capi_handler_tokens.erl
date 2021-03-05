@@ -427,7 +427,7 @@ get_payment_token_provider({samsung, _}, _PaymentData) ->
 
 extract_payment_tool_provider_metadata({_Provider, Details}) ->
     {?PAYMENT_TOOL_PROVIDER_META_NS, #{
-        <<"payment_details">> => extract_payment_details_metadata(Details)
+        <<"details">> => extract_payment_details_metadata(Details)
     }}.
 
 extract_payment_details_metadata(#paytoolprv_ApplePayDetails{
