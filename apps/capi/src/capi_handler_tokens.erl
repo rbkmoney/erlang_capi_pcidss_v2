@@ -425,9 +425,8 @@ get_payment_token_provider({samsung, _}, _PaymentData) ->
 %% All this stuff deserves its own module I believe. These super-long names are quite strong hints.
 -define(PAYMENT_TOOL_PROVIDER_META_NS, <<"com.rbkmoney.payment-tool-provider">>).
 
-extract_payment_tool_provider_metadata({Provider, Details}) ->
+extract_payment_tool_provider_metadata({_Provider, Details}) ->
     {?PAYMENT_TOOL_PROVIDER_META_NS, #{
-        <<"provider">> => genlib:to_binary(Provider),
         <<"payment_details">> => extract_payment_details_metadata(Details)
     }}.
 

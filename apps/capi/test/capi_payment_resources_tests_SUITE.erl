@@ -918,7 +918,6 @@ create_yandexpay_tokenized_payment_resource_ok_test(Config) ->
             metadata = #{
                 <<"com.rbkmoney.payment-tool-provider">> :=
                     {obj, #{
-                        {str, <<"provider">>} := {str, <<"yandex">>},
                         {str, <<"payment_details">>} :=
                             {obj, #{
                                 {str, <<"message_id">>} := {str, ?STRING}
