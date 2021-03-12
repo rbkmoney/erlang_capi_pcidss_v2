@@ -398,7 +398,6 @@ get_tokenization_method({card, _}) ->
 get_tokenization_method({tokenized_card, _}) ->
     dpan.
 
-
 % Do not drop is_cvv_empty flag for tokenized bank cards which looks like
 % simple bank card. This prevent wrong routing decisions in hellgate
 % when cvv is empty, but is_cvv_empty = undefined, which forces routing to bypass

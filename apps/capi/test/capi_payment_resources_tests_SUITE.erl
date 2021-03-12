@@ -787,11 +787,11 @@ create_applepay_tokenized_payment_resource_ok_test(Config) ->
     false = maps:is_key(<<"first6">>, Details),
     {bank_card, BankCard} = decrypt_payment_tool_token(PaymentToolToken),
     ?assertMatch(
-       #domain_BankCard{
-          tokenization_method = dpan
-         },
-       BankCard
-      ).
+        #domain_BankCard{
+            tokenization_method = dpan
+        },
+        BankCard
+    ).
 
 -spec create_googlepay_tokenized_payment_resource_ok_test(_) -> _.
 create_googlepay_tokenized_payment_resource_ok_test(Config) ->
@@ -831,11 +831,11 @@ create_googlepay_tokenized_payment_resource_ok_test(Config) ->
     ?assertEqual(error, maps:find(<<"first6">>, Details)),
     {bank_card, BankCard} = decrypt_payment_tool_token(PaymentToolToken),
     ?assertMatch(
-       #domain_BankCard{
-          tokenization_method = dpan
-         },
-       BankCard
-      ).
+        #domain_BankCard{
+            tokenization_method = dpan
+        },
+        BankCard
+    ).
 
 -spec create_googlepay_plain_payment_resource_ok_test(_) -> _.
 create_googlepay_plain_payment_resource_ok_test(Config) ->
