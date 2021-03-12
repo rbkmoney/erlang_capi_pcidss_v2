@@ -375,7 +375,8 @@ process_tokenized_card_data_result(
         token_provider = TokenProvider,
         is_cvv_empty = set_is_empty_cvv(TokenProvider, BankCard),
         exp_date = encode_exp_date(genlib_map:get(exp_date, ExtraCardData)),
-        cardholder_name = genlib_map:get(cardholder, ExtraCardData)
+        cardholder_name = genlib_map:get(cardholder, ExtraCardData),
+        tokenization_method = get_tokenization_method(PaymentData)
     },
     BankCard2 = add_metadata(NS, ProviderMetadata, BankCard1),
     {{bank_card, BankCard2}, SessionID}.
@@ -391,6 +392,12 @@ get_tokenized_pan(_Last4, {card, #paytoolprv_Card{pan = PAN}}) ->
     get_last4(PAN);
 get_tokenized_pan(Last4, _PaymentData) when Last4 =/= undefined ->
     Last4.
+
+get_tokenization_method({card, _}) ->
+    none;
+get_tokenization_method({tokenized_card, _}) ->
+    dpan.
+
 
 % Do not drop is_cvv_empty flag for tokenized bank cards which looks like
 % simple bank card. This prevent wrong routing decisions in hellgate

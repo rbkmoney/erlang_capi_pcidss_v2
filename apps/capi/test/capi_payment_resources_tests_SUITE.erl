@@ -768,6 +768,7 @@ create_applepay_tokenized_payment_resource_ok_test(Config) ->
     ),
     ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
     {ok, #{
+        <<"paymentToolToken">> := PaymentToolToken,
         <<"paymentToolDetails">> := Details = #{
             <<"paymentSystem">> := <<"mastercard">>,
             <<"cardNumberMask">> := <<"************7892">>,
@@ -783,7 +784,14 @@ create_applepay_tokenized_payment_resource_ok_test(Config) ->
             },
             <<"clientInfo">> => ClientInfo
         }),
-    false = maps:is_key(<<"first6">>, Details).
+    false = maps:is_key(<<"first6">>, Details),
+    {bank_card, BankCard} = decrypt_payment_tool_token(PaymentToolToken),
+    ?assertMatch(
+       #domain_BankCard{
+          tokenization_method = dpan
+         },
+       BankCard
+      ).
 
 -spec create_googlepay_tokenized_payment_resource_ok_test(_) -> _.
 create_googlepay_tokenized_payment_resource_ok_test(Config) ->
@@ -803,6 +811,7 @@ create_googlepay_tokenized_payment_resource_ok_test(Config) ->
     ),
     ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
     {ok, #{
+        <<"paymentToolToken">> := PaymentToolToken,
         <<"paymentToolDetails">> := Details = #{
             <<"paymentSystem">> := <<"mastercard">>,
             <<"tokenProvider">> := <<"googlepay">>,
@@ -819,7 +828,14 @@ create_googlepay_tokenized_payment_resource_ok_test(Config) ->
             },
             <<"clientInfo">> => ClientInfo
         }),
-    ?assertEqual(error, maps:find(<<"first6">>, Details)).
+    ?assertEqual(error, maps:find(<<"first6">>, Details)),
+    {bank_card, BankCard} = decrypt_payment_tool_token(PaymentToolToken),
+    ?assertMatch(
+       #domain_BankCard{
+          tokenization_method = dpan
+         },
+       BankCard
+      ).
 
 -spec create_googlepay_plain_payment_resource_ok_test(_) -> _.
 create_googlepay_plain_payment_resource_ok_test(Config) ->
@@ -871,7 +887,8 @@ create_googlepay_plain_payment_resource_ok_test(Config) ->
         #domain_BankCard{
             payment_system = mastercard,
             last_digits = <<"7892">>,
-            is_cvv_empty = true
+            is_cvv_empty = true,
+            tokenization_method = none
         },
         BankCard
     ).
@@ -915,6 +932,7 @@ create_yandexpay_tokenized_payment_resource_ok_test(Config) ->
     {ok, {PaymentTool, _Deadline}} = capi_crypto:decrypt_payment_tool_token(EncryptedToken),
     ?assertMatch(
         {bank_card, #domain_BankCard{
+            tokenization_method = dpan,
             metadata = #{
                 <<"com.rbkmoney.payment-tool-provider">> :=
                     {obj, #{
