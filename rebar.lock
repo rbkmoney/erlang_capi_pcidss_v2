@@ -35,7 +35,7 @@
  {<<"cowlib">>,{pkg,<<"cowlib">>,<<"2.8.0">>},1},
  {<<"damsel">>,
   {git,"https://github.com/rbkmoney/damsel.git",
-       {ref,"1c9a1c7b92626598a442e15ce6942a3b44173aa1"}},
+       {ref,"e403f5227ba2f411a2d1be206e6a0dbc0f529c66"}},
   0},
  {<<"email_validator">>,{pkg,<<"email_validator">>,<<"1.0.0">>},0},
  {<<"erl_health">>,
