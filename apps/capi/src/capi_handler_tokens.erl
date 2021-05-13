@@ -51,11 +51,12 @@ process_request('CreatePaymentResource' = OperationID, Req, Context) ->
         },
         % Ограничиваем время жизни платежного токена временем жизни платежного инструмента.
         % Если время жизни платежного инструмента не задано, то интервалом заданным в настройках.
-        TokenDeadline = case {PaymentToolDeadline, payment_tool_token_deadline()} of
-          {ToolDeadline, DefaultDeadline} when is_atom(ToolDeadline) -> DefaultDeadline;
-          {ToolDeadline, DefaultDeadline} when  ToolDeadline < DefaultDeadline -> ToolDeadline;
-          {_, DefaultDeadline} -> DefaultDeadline
-        end,
+        TokenDeadline =
+            case {PaymentToolDeadline, payment_tool_token_deadline()} of
+                {ToolDeadline, DefaultDeadline} when is_atom(ToolDeadline) -> DefaultDeadline;
+                {ToolDeadline, DefaultDeadline} when ToolDeadline < DefaultDeadline -> ToolDeadline;
+                {_, DefaultDeadline} -> DefaultDeadline
+            end,
         EncryptedToken = capi_crypto:create_encrypted_payment_tool_token(PaymentTool, TokenDeadline),
         {ok,
             {201, #{},
@@ -76,17 +77,18 @@ process_request(_OperationID, _Req, _Context) ->
 
 -spec payment_tool_token_deadline() -> capi_utils:deadline().
 payment_tool_token_deadline() ->
-    TokenLifetime = case genlib_app:env(capi_pcidss, payment_tool_token_lifetime, ?DEFAULT_PAYMENT_TOOL_TOKEN_LIFETIME) of
-        Value when is_integer(Value) ->
-            Value;
-        Value ->
-            case capi_utils:parse_lifetime(Value) of
-                {ok, Lifetime} ->
-                    Lifetime;
-                Error ->
-                    erlang:error(Error, [Value])
-            end
-    end,
+    TokenLifetime =
+        case genlib_app:env(capi_pcidss, payment_tool_token_lifetime, ?DEFAULT_PAYMENT_TOOL_TOKEN_LIFETIME) of
+            Value when is_integer(Value) ->
+                Value;
+            Value ->
+                case capi_utils:parse_lifetime(Value) of
+                    {ok, Lifetime} ->
+                        Lifetime;
+                    Error ->
+                        erlang:error(Error, [Value])
+                end
+        end,
     capi_utils:deadline_from_timeout(TokenLifetime).
 
 %%
