@@ -223,7 +223,7 @@ put_card_to_cds(CardData, SessionData, BankInfo, Context) ->
 expand_card_info(
     BankCard,
     #{
-        payment_system := PaymentSystem,
+        payment_system_deprecated := LegacyPaymentSystem,
         bank_name := BankName,
         issuer_country := IssuerCountry,
         category := Category,
@@ -235,7 +235,7 @@ expand_card_info(
         token = BankCard#cds_BankCard.token,
         bin = BankCard#cds_BankCard.bin,
         last_digits = BankCard#cds_BankCard.last_digits,
-        payment_system_deprecated = PaymentSystem,
+        payment_system_deprecated = LegacyPaymentSystem,
         issuer_country = IssuerCountry,
         category = Category,
         bank_name = BankName,

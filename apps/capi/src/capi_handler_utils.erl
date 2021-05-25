@@ -57,20 +57,20 @@ validation_error({invalid, K, C}) ->
     },
     create_error_resp(400, Data).
 
-validation_msg(expiration, _Key) ->
+validation_msg({exact_exp_date, _}, _Key) ->
     <<"Invalid expiration date">>;
-validation_msg(luhn, Key) ->
+validation_msg({checksum, _}, Key) ->
     <<"Invalid ", (key_to_binary(Key))/binary, " checksum">>;
 validation_msg({length, _}, Key) ->
+    <<"Invalid ", (key_to_binary(Key))/binary, " length">>;
+validation_msg({ranges, _}, Key) ->
     <<"Invalid ", (key_to_binary(Key))/binary, " length">>.
 
-key_to_binary(cardnumber) ->
+key_to_binary(card_number) ->
     <<"cardNumber">>;
 key_to_binary(exp_date) ->
     <<"expDate">>;
-key_to_binary(cardholder) ->
-    <<"cardHolder">>;
-key_to_binary(cvv) ->
+key_to_binary(cvc) ->
     <<"cvv">>.
 
 create_error_resp(Code, Data) ->
