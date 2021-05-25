@@ -25,14 +25,7 @@
 -export([payment_system/1]).
 -export([validation_env/0]).
 
--type bank_info() :: #{
-    payment_system := binary(),
-    payment_system_deprecated := dmsl_domain_thrift:'LegacyBankCardPaymentSystem'(),
-    bank_name := binary(),
-    issuer_country := dmsl_domain_thrift:'Residence'() | undefined,
-    category := binary() | undefined,
-    metadata := {_MetaNS :: binary(), map()}
-}.
+-type bank_info() :: bankcard_validator_carddata:bank_info().
 
 -type lookup_error() ::
     notfound
@@ -50,9 +43,7 @@
 -type payment_system() :: binary().
 -type reason() :: bankcard_validator:reason().
 
--opaque validation_env() :: #{
-    now := calendar:datetime()
-}.
+-type validation_env() :: bankcard_validator:validation_env().
 
 -export_type([session_data/0]).
 -export_type([payment_system/0]).
