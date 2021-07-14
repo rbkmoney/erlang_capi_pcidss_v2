@@ -43,7 +43,8 @@ prepare('CreatePaymentResource' = OperationID, Req, Context) ->
             case handle_auth_result(BouncerResult) of
                 allowed when ReplacementIP /= undefined, not IpReplacementAllowedOld ->
                     logger:warning(
-                        "Request fully allowed, yet IP replacement was forbidden in old version: restricting replacement"
+                        "Request fully allowed, yet IP replacement was forbidden " ++
+                            "in old version: restricting replacement"
                     ),
                     {restricted, #brstn_Restrictions{
                         capi = #brstn_RestrictionsCommonAPI{
@@ -52,7 +53,8 @@ prepare('CreatePaymentResource' = OperationID, Req, Context) ->
                     }};
                 {restricted, ip_replacement_forbidden} when ReplacementIP /= undefined, IpReplacementAllowedOld ->
                     logger:warning(
-                        "Request forbidden, yet IP replacement (which might be a reason) was allowed in old version: allowing replacement"
+                        "Request forbidden, yet IP replacement (which might be a reason)" ++
+                            " was allowed in old version: allowing replacement"
                     ),
                     allowed;
                 _ ->

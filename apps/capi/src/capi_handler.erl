@@ -54,7 +54,6 @@
     Result :: false | {true, capi_auth:preauth_context()}.
 authorize_api_key(OperationID, ApiKey, _Context, _HandlerOpts) ->
     %% No actual authorization here: see capi_v2.capi_handler for details
-    logger:info("Authorizing operation ~p: ~p", [OperationID, _Context]),
     case capi_auth:preauthorize_api_key(ApiKey) of
         {ok, Context} ->
             {true, Context};
@@ -93,21 +92,18 @@ get_handlers() ->
     HandlerOpts :: handler_opts()
 ) -> {ok | error, response()}.
 handle_request(OperationID, Req, SwagContext, HandlerOpts) ->
-    logger:info("Handling operation ~p: ~p", [OperationID, SwagContext]),
     scoper:scope(
         ?SWAG_HANDLER_SCOPE,
         fun() -> handle_function_(OperationID, Req, SwagContext, HandlerOpts) end
     ).
 
 handle_function_(OperationID, Req, SwagContext0, _HandlerOpts) ->
-    logger:info("Preparing operation ~p: ~p", [OperationID, SwagContext0]),
-
-    _ = logger:info("Processing request ~p", [OperationID]),
     try
         RpcID = create_rpc_id(Req),
         ok = set_rpc_meta(RpcID),
         ok = set_request_meta(OperationID, Req),
 
+        _ = logger:info("Processing request ~p", [OperationID]),
         WoodyContext0 = attach_deadline(Req, create_woody_context(RpcID)),
         SwagContext = do_authorize_api_key(SwagContext0, WoodyContext0),
         WoodyContext = put_user_identity(WoodyContext0, get_auth_context(SwagContext)),
