@@ -129,12 +129,9 @@ handle_function_(OperationID, Req, SwagContext0, _HandlerOpts) ->
                 {ok, {401, #{}, undefined}}
         end
     catch
-        %% TODO: 2 new clauses, are they relevant?
         throw:{token_auth_failed, Reason} ->
             _ = logger:info("API Key authorization failed for ~p due to ~p", [OperationID, Reason]),
             {error, {401, #{}, undefined}};
-        throw:{handler_respond, HandlerResponse} ->
-            {ok, HandlerResponse};
         throw:{bad_deadline, _Deadline} ->
             {ok, logic_error(invalidDeadline, <<"Invalid data in X-Request-Deadline header">>)};
         throw:{handler_function_clause, _OperationID} ->
