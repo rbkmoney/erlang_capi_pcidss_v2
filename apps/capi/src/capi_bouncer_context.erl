@@ -74,12 +74,7 @@ build(tokens, Params, Acc, _WoodyCtx) ->
     }.
 
 maybe_with(Name, Params, Then) ->
-    case maps:get(Name, Params, undefined) of
-        V when V /= undefined ->
-            Then(V);
-        undefined ->
-            undefined
-    end.
+    capi_utils:maybe(maps:get(Name, Params, undefined), Then).
 
 operation_id_to_binary(V) ->
     erlang:atom_to_binary(V, utf8).
