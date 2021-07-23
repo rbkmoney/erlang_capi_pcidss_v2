@@ -20,7 +20,7 @@ BASE_IMAGE_NAME := service-erlang
 BASE_IMAGE_TAG := 51bd5f25d00cbf75616e2d672601dfe7351dcaa4
 
 BUILD_IMAGE_NAME := build-erlang
-BUILD_IMAGE_TAG := 61a001bbb48128895735a3ac35b0858484fdb2eb
+BUILD_IMAGE_TAG := 00eedc4bae3ebfe7f82c4d156dd52be9bd29d69e
 
 CALL_ANYWHERE := \
 	submodules \

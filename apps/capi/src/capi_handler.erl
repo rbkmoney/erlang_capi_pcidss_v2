@@ -9,7 +9,7 @@
 -type error_type() :: swag_server_logic_handler:error_type().
 
 %% API callbacks
--export([authorize_api_key/3]).
+-export([authorize_api_key/4]).
 -export([handle_request/4]).
 -export([map_error/2]).
 
@@ -35,9 +35,9 @@
 
 -define(SWAG_HANDLER_SCOPE, swag_handler).
 
--spec authorize_api_key(swag_server:operation_id(), swag_server:api_key(), handler_opts()) ->
+-spec authorize_api_key(swag_server:operation_id(), swag_server:api_key(), request_context(), handler_opts()) ->
     Result :: false | {true, uac:context()}.
-authorize_api_key(OperationID, ApiKey, _HandlerOpts) ->
+authorize_api_key(OperationID, ApiKey, _Context, _HandlerOpts) ->
     scoper:scope(?SWAG_HANDLER_SCOPE, #{operation_id => OperationID}, fun() ->
         _ = logger:debug("Api key authorization started"),
         case uac:authorize_api_key(ApiKey, get_verification_options()) of
