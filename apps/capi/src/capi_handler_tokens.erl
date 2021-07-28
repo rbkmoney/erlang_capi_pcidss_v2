@@ -53,8 +53,8 @@ prepare('CreatePaymentResource' = OperationID, Req, Context) ->
                     }};
                 {restricted, ip_replacement_forbidden} when ReplacementIP /= undefined, IpReplacementAllowedOld ->
                     logger:warning(
-                        "Request was restricted with IP replacement, yet it (which might be a reason)" ++
-                            " was allowed in old version: allowing replacement"
+                        "Request was restricted with IP replacement, yet it " ++
+                            " was allowed in old version: allowing request and replacement"
                     ),
                     allowed;
                 _ ->
