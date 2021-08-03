@@ -238,12 +238,9 @@ process_general_error(Class, Reason, Stacktrace, OperationID, Req, SwagContext) 
 set_context_meta(Context) ->
     AuthContext = capi_handler_utils:get_auth_context(Context),
     Meta = #{
-        metadata => genlib_map:compact(#{
-            'user-identity' => #{
-                user_id => tk_auth_data:get_user_id(AuthContext),
-                party_id => tk_auth_data:get_party_id(AuthContext)
-            }
-        })
+        metadata => #{
+            'user-identity' => capi_auth:get_subject_data(AuthContext)
+        }
     },
     scoper:add_meta(Meta).
 
