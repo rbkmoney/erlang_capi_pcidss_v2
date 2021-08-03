@@ -19,7 +19,7 @@
   0},
  {<<"bouncer_proto">>,
   {git,"https://github.com/rbkmoney/bouncer-proto.git",
-       {ref,"e574cb496b4c48e21e661a9f053c8122de088a6a"}},
+       {ref,"9056cb29c3b6c6dcea57019d6628ed1d1038cabe"}},
   0},
  {<<"cache">>,{pkg,<<"cache">>,<<"2.3.3">>},1},
  {<<"cds_proto">>,
