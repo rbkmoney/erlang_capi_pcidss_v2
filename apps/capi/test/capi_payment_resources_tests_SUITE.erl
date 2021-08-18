@@ -272,10 +272,11 @@ create_payment_resource_with_client_url_fail_test(Config) ->
         <<"fingerprint">> => <<"test fingerprint">>,
         <<"url">> => <<"123://www.shop.com">>
     },
-    {error, {400, #{
-        <<"code">> := <<"invalidRequest">>,
-        <<"message">> := <<"Client info url is invalid">>
-    }}} = capi_client_tokens:create_payment_resource(?config(context, Config), #{
+    {error,
+        {400, #{
+            <<"code">> := <<"invalidRequest">>,
+            <<"message">> := <<"Client info url is invalid">>
+        }}} = capi_client_tokens:create_payment_resource(?config(context, Config), #{
         <<"paymentTool">> => #{
             <<"paymentToolType">> => <<"CardData">>,
             <<"cardNumber">> => <<"4111111111111111">>,
