@@ -257,22 +257,22 @@ get_auth_scope_fragment_value({Name, EntityID}, _TokenInfo) when is_atom(Name) -
 get_metadata(TokenInfo, MetadataSpec) ->
     lists:foldl(
         fun(SpecFragment, Acc0) ->
-            maps:merge(Acc0, get_metadata_by_spec(SpecFragment, TokenInfo))
+            maps:merge(Acc0, make_metadata_by_spec(SpecFragment, TokenInfo))
         end,
         #{},
         MetadataSpec
     ).
 
-get_metadata_by_spec(user_session_meta, TokenInfo) ->
+make_metadata_by_spec(user_session_meta, TokenInfo) ->
     genlib_map:compact(#{
         ?TK_META_USER_ID => uac_authorizer_jwt:get_subject_id(TokenInfo),
         ?TK_META_USER_EMAIL => uac_authorizer_jwt:get_subject_email(TokenInfo)
     });
-get_metadata_by_spec(api_key_meta, TokenInfo) ->
+make_metadata_by_spec(api_key_meta, TokenInfo) ->
     #{
         ?TK_META_PARTY_ID => uac_authorizer_jwt:get_subject_id(TokenInfo)
     };
-get_metadata_by_spec(consumer_meta, TokenInfo) ->
+make_metadata_by_spec(consumer_meta, TokenInfo) ->
     genlib_map:compact(#{
         ?TK_META_TOKEN_CONSUMER => uac_authorizer_jwt:get_claim(<<"cons">>, TokenInfo, undefined)
     }).
