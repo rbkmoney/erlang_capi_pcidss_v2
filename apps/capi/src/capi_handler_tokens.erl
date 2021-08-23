@@ -79,7 +79,6 @@ prepare(_OperationID, _Req, _Context) ->
 process_request('CreatePaymentResource' = OperationID, Req, Context, Resolution) ->
     Params = maps:get('PaymentResourceParams', Req),
     ClientInfo0 = maps:get(<<"clientInfo">>, Params),
-
     ClientIP =
         case handle_auth_result(Resolution) of
             {restricted, ip_replacement_forbidden} ->
@@ -92,7 +91,6 @@ process_request('CreatePaymentResource' = OperationID, Req, Context, Resolution)
         end,
 
     ClientInfo = maps:put(<<"ip">>, ClientIP, ClientInfo0),
-
     try
         ClientUrl = get_client_url(ClientInfo),
         ok = validate_url(ClientUrl),
