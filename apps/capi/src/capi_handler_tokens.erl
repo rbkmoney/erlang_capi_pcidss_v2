@@ -34,9 +34,7 @@ prepare('CreatePaymentResource' = OperationID, Req, Context) ->
             {operation, #{id => OperationID, party => PartyID}},
             {tokens, #{replacement_ip => ReplacementIP}}
         ],
-        BouncerResult = capi_auth:authorize_operation(Prototypes, Context, Req),
-        Result = handle_auth_result(BouncerResult),
-        {ok, Result}
+        {ok, capi_auth:authorize_operation(Prototypes, Context, Req)}
     end,
     Process = fun(Resolution) ->
         process_request(OperationID, Req, Context, Resolution)
@@ -55,7 +53,7 @@ process_request('CreatePaymentResource' = OperationID, Req, Context, Resolution)
     Params = maps:get('PaymentResourceParams', Req),
     ClientInfo0 = maps:get(<<"clientInfo">>, Params),
     ClientIP =
-        case Resolution of
+        case flatten_resolution_desiction(Resolution) of
             {restricted, ip_replacement_forbidden} ->
                 prepare_requester_ip(Context);
             allowed ->
@@ -134,11 +132,9 @@ payment_tool_token_deadline() ->
 
 %%
 
-handle_auth_result(allowed) ->
+flatten_resolution_desiction(allowed) ->
     allowed;
-handle_auth_result(forbidden) ->
-    forbidden;
-handle_auth_result({restricted, #brstn_Restrictions{capi = CAPI}}) ->
+flatten_resolution_desiction({restricted, #brstn_Restrictions{capi = CAPI}}) ->
     case CAPI of
         #brstn_RestrictionsCommonAPI{
             ip_replacement_forbidden = true
