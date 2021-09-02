@@ -93,8 +93,7 @@ authorize_operation(
     _Req
 ) ->
     AuthContext = extract_auth_context(ProcessingContext),
-    AuthResult = do_authorize_operation(Prototypes, get_auth_data(AuthContext), ProcessingContext),
-    AuthResult.
+    do_authorize_operation(Prototypes, get_auth_data(AuthContext), ProcessingContext).
 
 do_authorize_operation(_, undefined, _) ->
     undefined;
