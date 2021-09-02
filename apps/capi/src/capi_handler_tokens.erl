@@ -53,7 +53,7 @@ process_request('CreatePaymentResource' = OperationID, Req, Context, Resolution)
     Params = maps:get('PaymentResourceParams', Req),
     ClientInfo0 = maps:get(<<"clientInfo">>, Params),
     ClientIP =
-        case flatten_resolution_desiction(Resolution) of
+        case flatten_resolution_decision(Resolution) of
             {restricted, ip_replacement_forbidden} ->
                 prepare_requester_ip(Context);
             allowed ->
@@ -132,9 +132,9 @@ payment_tool_token_deadline() ->
 
 %%
 
-flatten_resolution_desiction(allowed) ->
+flatten_resolution_decision(allowed) ->
     allowed;
-flatten_resolution_desiction({restricted, #brstn_Restrictions{capi = CAPI}}) ->
+flatten_resolution_decision({restricted, #brstn_Restrictions{capi = CAPI}}) ->
     case CAPI of
         #brstn_RestrictionsCommonAPI{
             ip_replacement_forbidden = true
