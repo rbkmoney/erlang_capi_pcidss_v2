@@ -347,20 +347,28 @@ decode_merchant_id(Encoded) ->
 decode_merchant_id_fallback(String) ->
     FallbackMap = genlib_app:env(capi_pcidss, fallback_merchant_map, #{}),
     case maps:get(String, FallbackMap, undefined) of
-        {_Provider, RealmMode, PartyID, ShopID, Expiration} ->
-            Deadline =
-                case Expiration of
-                    {Year, Month, Day} ->
-                        {{{Year, Month, Day}, {0, 0, 0}}, 0};
-                    _Other ->
-                        undefined
-                end,
-            #{
-                realm => decode_realm_mode(RealmMode),
-                party => PartyID,
-                shop => ShopID,
-                expiration => capi_utils:deadline_to_binary(Deadline)
-            };
+        #{} = Map ->
+            genlib_map:compact(#{
+                realm => capi_utils:maybe(maps:get(party, Map, undefined), fun(RealmMode) ->
+                    decode_realm_mode(RealmMode)
+                end),
+                party => capi_utils:maybe(maps:get(party, Map, undefined), fun(PartyID) ->
+                    PartyID
+                end),
+                shop => capi_utils:maybe(maps:get(shop, Map, undefined), fun(ShopID) ->
+                    ShopID
+                end),
+                expiration => capi_utils:maybe(maps:get(expiration, Map, undefined), fun(Expiration) ->
+                    Deadline =
+                        case Expiration of
+                            {Year, Month, Day} ->
+                                {{{Year, Month, Day}, {0, 0, 0}}, 0};
+                            _Other ->
+                                undefined
+                        end,
+                    capi_utils:deadline_to_binary(Deadline)
+                end)
+            });
         _Other ->
             undefined
     end.
