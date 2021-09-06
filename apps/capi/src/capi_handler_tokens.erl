@@ -340,35 +340,27 @@ decode_merchant_id(Encoded) ->
                         realm => RealmMode, party => PartyID, shop => ShopID
                     };
                 _ ->
-                    erlang:throw(invalid_merchant_id)
+                    erlang:throw({invalid_merchant_id, Encoded})
             end
     end.
 
 decode_merchant_id_fallback(String) ->
     FallbackMap = genlib_app:env(capi_pcidss, fallback_merchant_map, #{}),
     case maps:get(String, FallbackMap, undefined) of
-        #{} = Map ->
-            genlib_map:compact(#{
-                realm => capi_utils:maybe(maps:get(party, Map, undefined), fun(RealmMode) ->
-                    decode_realm_mode(RealmMode)
-                end),
-                party => capi_utils:maybe(maps:get(party, Map, undefined), fun(PartyID) ->
-                    PartyID
-                end),
-                shop => capi_utils:maybe(maps:get(shop, Map, undefined), fun(ShopID) ->
-                    ShopID
-                end),
-                expiration => capi_utils:maybe(maps:get(expiration, Map, undefined), fun(Expiration) ->
-                    Deadline =
-                        case Expiration of
-                            {Year, Month, Day} ->
-                                {{{Year, Month, Day}, {0, 0, 0}}, 0};
-                            _Other ->
-                                undefined
-                        end,
-                    capi_utils:deadline_to_binary(Deadline)
-                end)
-            });
+        Map when is_map(Map) ->
+            genlib_map:compact(
+                maps:map(
+                    fun
+                        (realm, V) -> decode_realm_mode(V);
+                        (party, V) -> V;
+                        (shop, V) -> V;
+                        (expiration, {_Y, _M, _D} = V) -> capi_utils:deadline_to_binary({V, {0, 0, 0}, 0});
+                        (expiration, undefined) -> capi_utils:deadline_to_binary(undefined);
+                        (_Other, _V) -> undefined
+                    end,
+                    Map
+                )
+            );
         _Other ->
             undefined
     end.
@@ -464,6 +456,7 @@ get_token_provider_merchant_id(Data) ->
             maps:get(<<"gatewayMerchantID">>, Data);
         #{<<"provider">> := <<"SamsungPay">>} ->
             % TODO #123 возможно тут потребуется дополнительная обработка
+            % https://pay.samsung.com/developers/resource/guide
             maps:get(<<"referenceID">>, Data);
         #{<<"provider">> := <<"YandexPay">>} ->
             maps:get(<<"gatewayMerchantID">>, Data)
@@ -471,7 +464,7 @@ get_token_provider_merchant_id(Data) ->
 
 encode_wrapped_payment_tool(Data) ->
     MerchantID = get_token_provider_merchant_id(Data),
-    #{realm := RealmMode} = decode_merchant_id(MerchantID),
+    RealmMode = maps:get(realm, decode_merchant_id(MerchantID), undefined),
     #paytoolprv_WrappedPaymentTool{
         request = encode_payment_request(Data),
         realm = encode_realm_mode(RealmMode)

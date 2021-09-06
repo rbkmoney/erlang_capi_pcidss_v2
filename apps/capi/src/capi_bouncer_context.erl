@@ -1,11 +1,5 @@
 -module(capi_bouncer_context).
-
--include_lib("bouncer_proto/include/bouncer_base_thrift.hrl").
 -include_lib("bouncer_proto/include/bouncer_context_v1_thrift.hrl").
-
--include_lib("damsel/include/dmsl_payment_processing_thrift.hrl").
--include_lib("damsel/include/dmsl_payout_processing_thrift.hrl").
--include_lib("damsel/include/dmsl_webhooker_thrift.hrl").
 
 -type fragment() :: bouncer_client:context_fragment().
 -type acc() :: bouncer_context_helpers:context_fragment().

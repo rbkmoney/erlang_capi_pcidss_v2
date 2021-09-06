@@ -57,10 +57,6 @@
     payment_token_valid_until_test/1
 ]).
 
--define(CAPI_PORT, 8080).
--define(CAPI_HOST_NAME, "localhost").
--define(CAPI_URL, ?CAPI_HOST_NAME ++ ":" ++ integer_to_list(?CAPI_PORT)).
-
 %% 01/01/2100 @ 12:00am (UTC)
 -define(DISTANT_TIMESTAMP, 4102444800).
 
@@ -76,7 +72,6 @@
     },
     <<"clientInfo">> => #{<<"fingerprint">> => <<"test fingerprint">>}
 }).
--define(LINKED_INVOICE_ID, <<"linked-invoice-id">>).
 
 -define(badresp(Code), {error, {Code, #{}}}).
 
