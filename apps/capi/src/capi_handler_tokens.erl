@@ -354,8 +354,7 @@ decode_merchant_id_fallback(String) ->
                         (realm, V) -> decode_realm_mode(V);
                         (party, V) -> V;
                         (shop, V) -> V;
-                        (expiration, {_Y, _M, _D} = V) -> capi_utils:deadline_to_binary({V, {0, 0, 0}, 0});
-                        (expiration, undefined) -> capi_utils:deadline_to_binary(undefined);
+                        (expiration, {_Y, _M, _D} = V) -> capi_utils:deadline_to_binary({{V, {0, 0, 0}}, 0});
                         (_Other, _V) -> undefined
                     end,
                     Map
