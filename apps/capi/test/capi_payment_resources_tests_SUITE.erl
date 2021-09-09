@@ -54,6 +54,7 @@
     authorization_error_no_permission_test/1,
 
     payment_token_prev_test/1,
+    payment_token_data_test/1,
     payment_token_valid_until_test/1
 ]).
 
@@ -72,6 +73,7 @@
     },
     <<"clientInfo">> => #{<<"fingerprint">> => <<"test fingerprint">>}
 }).
+-define(LINKED_INVOICE_ID, <<"linked-invoice-id">>).
 
 -define(badresp(Code), {error, {Code, #{}}}).
 
@@ -126,6 +128,7 @@ groups() ->
             authorization_error_no_permission_test,
 
             payment_token_prev_test,
+            payment_token_data_test,
             payment_token_valid_until_test
         ]}
     ].
@@ -1099,8 +1102,23 @@ payment_token_prev_test(_Config) ->
     ),
     ?assertEqual(<<"2021-08-02T11:21:15.082Z">>, capi_utils:deadline_to_binary(ValidUntil)).
 
--spec payment_token_valid_until_test(_) -> _.
+-spec payment_token_data_test(config()) -> _.
+payment_token_data_test(Config) ->
+    {ok, #{<<"paymentToolToken">> := PaymentToolToken}} =
+        capi_client_tokens:create_payment_resource(?config(context, Config), #{
+            <<"paymentTool">> => #{
+                <<"paymentToolType">> => <<"PaymentTerminalData">>,
+                <<"provider">> => <<"euroset">>
+            },
+            <<"clientInfo">> => #{<<"fingerprint">> => <<"test fingerprint">>}
+        }),
+    {ok, TokenData} = capi_crypto:decode_token(PaymentToolToken),
+    #{payment_tool := PaymentTool} = TokenData,
+    #{bouncer_data := BouncerData} = TokenData,
+    ?assertEqual({payment_terminal, {domain_PaymentTerminal, undefined, euroset}}, PaymentTool),
+    ?assertEqual(#{invoice => ?LINKED_INVOICE_ID}, BouncerData).
 
+-spec payment_token_valid_until_test(_) -> _.
 payment_token_valid_until_test(Config) ->
     {ok, #{
         <<"paymentToolToken">> := PaymentToolToken,

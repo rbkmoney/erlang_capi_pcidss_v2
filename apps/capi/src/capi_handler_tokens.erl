@@ -107,7 +107,8 @@ process_request('CreatePaymentResource' = OperationID, Req, Context, Resolution)
             end,
         TokenData = #{
             payment_tool => PaymentTool,
-            valid_until => make_payment_token_deadline(PaymentToolDeadline)
+            valid_until => make_payment_token_deadline(PaymentToolDeadline),
+            bouncer_data => make_payment_token_bouncer_data(Context)
         },
         PaymentResource = #domain_DisposablePaymentResource{
             payment_tool = PaymentTool,
@@ -177,6 +178,17 @@ make_payment_token_deadline(undefined) ->
     payment_token_deadline();
 make_payment_token_deadline(PaymentToolDeadline) ->
     erlang:min(PaymentToolDeadline, payment_token_deadline()).
+
+-spec make_payment_token_bouncer_data(capi_handler:processing_context()) -> capi_crypto:bouncer_data().
+make_payment_token_bouncer_data(Context) ->
+    AuthContext = capi_auth:extract_auth_context(Context),
+    %% Перекладываем данные привязки из метаданных AcessToken в токен платежного средства
+    %% Данные лежат в формате прототипа capi_bouncer_context
+    %% При создании платежей прототип будет использован для создания ContextPaymentTool
+    genlib_map:compact(#{
+        invoice => capi_auth:get_invoice_link(AuthContext),
+        customer => capi_auth:get_customer_link(AuthContext)
+    }).
 
 %%
 

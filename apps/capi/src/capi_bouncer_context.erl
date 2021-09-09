@@ -1,4 +1,5 @@
 -module(capi_bouncer_context).
+
 -include_lib("bouncer_proto/include/bouncer_context_v1_thrift.hrl").
 
 -type fragment() :: bouncer_client:context_fragment().
