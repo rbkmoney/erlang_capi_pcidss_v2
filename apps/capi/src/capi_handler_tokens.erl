@@ -82,8 +82,7 @@ process_request('CreatePaymentResource' = OperationID, Req, Context, Resolution)
     ClientInfo1 = maps:put(<<"ip">>, ClientIP, ClientInfo0),
     try
         ClientUrl = get_client_url(ClientInfo1),
-        Url = delete_query_params(ClientUrl),
-        ClientInfo = maps:put(<<"url">>, Url, ClientInfo1),
+        ClientInfo = maps:put(<<"url">>, ClientUrl, ClientInfo1),
         Data = maps:get(<<"paymentTool">>, Params),
         PartyID = capi_handler_utils:get_party_id(Context),
         ExternalID = maps:get(<<"externalID">>, Params, undefined),
@@ -151,7 +150,7 @@ get_replacement_ip(ClientInfo) ->
 get_client_url(ClientInfo) ->
     case maps:get(<<"url">>, ClientInfo, undefined) of
         undefined ->
-            ok;
+            undefined;
         Url ->
             delete_query_params(Url)
     end.
