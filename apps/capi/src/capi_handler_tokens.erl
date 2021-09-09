@@ -79,10 +79,11 @@ process_request('CreatePaymentResource' = OperationID, Req, Context, Resolution)
                 end
         end,
 
-    ClientInfo = maps:put(<<"ip">>, ClientIP, ClientInfo0),
+    ClientInfo1 = maps:put(<<"ip">>, ClientIP, ClientInfo0),
     try
-        ClientUrl = get_client_url(ClientInfo),
-        ok = validate_url(ClientUrl),
+        ClientUrl = get_client_url(ClientInfo1),
+        Url = delete_query_params(ClientUrl),
+        ClientInfo = maps:put(<<"url">>, Url, ClientInfo1),
         Data = maps:get(<<"paymentTool">>, Params),
         PartyID = capi_handler_utils:get_party_id(Context),
         ExternalID = maps:get(<<"externalID">>, Params, undefined),
