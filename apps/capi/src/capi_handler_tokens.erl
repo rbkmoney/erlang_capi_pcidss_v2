@@ -148,14 +148,17 @@ get_replacement_ip(ClientInfo) ->
     maps:get(<<"ip">>, ClientInfo, undefined).
 
 get_client_url(ClientInfo) ->
-    maps:get(<<"url">>, ClientInfo, undefined).
-
-validate_url(undefined) ->
-    ok;
-validate_url(Url) ->
-    case capi_utils:validate_url(Url) of
-        ok ->
+    case maps:get(<<"url">>, ClientInfo, undefined) of
+        undefined ->
             ok;
+        Url ->
+            delete_query_params(Url)
+    end.
+
+delete_query_params(Url) ->
+    case capi_utils:delete_url_query_params(Url) of
+        {ok, UrlWithoutParams} ->
+            UrlWithoutParams;
         {error, Error, Description} ->
             _ = logger:notice("Unexpected client info url reason: ~p ~p", [Error, Description]),
             throw({ok, logic_error(invalidRequest, <<"Client info url is invalid">>)})
