@@ -114,7 +114,6 @@ process_request('CreatePaymentResource' = OperationID, Req, Context, Resolution)
             payment_session_id = PaymentSessionID,
             client_info = capi_handler_encoder:encode_client_info(ClientInfo)
         },
-        ct:print("TD: ~p", [TokenData]),
         {ok,
             {201, #{},
                 capi_handler_decoder:decode_disposable_payment_resource(
@@ -343,7 +342,9 @@ unwrap_merchant_id(Provider, EncodedID) ->
             case binary:split(EncodedID, <<$:>>, [global]) of
                 [RealmMode, PartyID, ShopID] ->
                     #{
-                        realm => RealmMode, party => PartyID, shop => ShopID
+                        realm => RealmMode,
+                        party => PartyID,
+                        shop => ShopID
                     };
                 _ ->
                     _ = logger:warning("invalid merchant id: ~p ~p", [Provider, EncodedID]),
@@ -531,18 +532,18 @@ process_tokenized_card_data_result(
     }
 ) ->
     TokenProvider = get_payment_token_provider(PaymentDetails),
+    TokenizationMethod = get_tokenization_method(PaymentData),
     {NS, ProviderMetadata} = extract_payment_tool_provider_metadata(PaymentDetails),
     BankCard1 = BankCard#domain_BankCard{
         bin = get_tokenized_bin(PaymentData),
         payment_system_deprecated = PaymentSystem,
         last_digits = get_tokenized_pan(Last4, PaymentData),
         token_provider_deprecated = TokenProvider,
-        is_cvv_empty = set_is_empty_cvv(TokenProvider, BankCard),
+        is_cvv_empty = set_is_empty_cvv(TokenProvider, TokenizationMethod, BankCard),
         exp_date = encode_exp_date(genlib_map:get(exp_date, ExtraCardData)),
         cardholder_name = genlib_map:get(cardholder, ExtraCardData),
-        tokenization_method = get_tokenization_method(PaymentData)
+        tokenization_method = TokenizationMethod
     },
-    ct:print("PS: ~p", [PaymentSystem]),
     BankCard2 = add_metadata(NS, ProviderMetadata, BankCard1),
     Deadline = capi_utils:deadline_from_binary(ValidUntil),
     {{bank_card, BankCard2}, SessionID, Deadline}.

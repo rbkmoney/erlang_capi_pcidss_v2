@@ -814,7 +814,7 @@ create_applepay_tokenized_payment_resource_ok_test(Config) ->
             <<"clientInfo">> => ClientInfo
         }),
     false = maps:is_key(<<"first6">>, Details),
-    {bank_card, BankCard} = decrypt_payment_tool_token(PaymentToolToken),
+    {bank_card, BankCard} = decrypt_payment_tool(PaymentToolToken),
     ?assertMatch(
         #domain_BankCard{
             tokenization_method = dpan
@@ -858,7 +858,7 @@ create_googlepay_tokenized_payment_resource_ok_test(Config) ->
             <<"clientInfo">> => ClientInfo
         }),
     ?assertEqual(error, maps:find(<<"first6">>, Details)),
-    {bank_card, BankCard} = decrypt_payment_tool_token(PaymentToolToken),
+    {bank_card, BankCard} = decrypt_payment_tool(PaymentToolToken),
     ?assertMatch(
         #domain_BankCard{
             tokenization_method = dpan
@@ -912,7 +912,6 @@ create_googlepay_plain_payment_resource_ok_test(Config) ->
     %% is_cvv_empty = true for GooglePay tokenized plain bank card
     %% see capi_handler_tokens:set_is_empty_cvv/2 for more info
     {bank_card, BankCard} = decrypt_payment_tool(PaymentToolToken),
-    ct:print("TEST: ~p", [BankCard#domain_BankCard.is_cvv_empty]),
     ?assertMatch(
         #domain_BankCard{
             payment_system_deprecated = mastercard,
