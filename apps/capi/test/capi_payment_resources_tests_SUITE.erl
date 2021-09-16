@@ -876,7 +876,8 @@ create_googlepay_plain_payment_resource_ok_test(Config) ->
     ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
     {ok, #{
         <<"paymentToolToken">> := PaymentToolToken,
-        <<"paymentToolDetails">> := Details = #{
+        <<"paymentToolDetails">> := #{
+            <<"tokenProvider">> := <<"googlepay">>,
             <<"paymentSystem">> := <<"mastercard">>,
             <<"cardNumberMask">> := <<"532130******7892">>,
             <<"first6">> := <<"532130">>,
@@ -892,10 +893,10 @@ create_googlepay_plain_payment_resource_ok_test(Config) ->
             },
             <<"clientInfo">> => ClientInfo
         }),
-    false = maps:is_key(<<"tokenProvider">>, Details),
     %% is_cvv_empty = true for GooglePay tokenized plain bank card
     %% see capi_handler_tokens:set_is_empty_cvv/2 for more info
     {bank_card, BankCard} = decrypt_payment_tool(PaymentToolToken),
+    ct:print("TEST: ~p", [BankCard#domain_BankCard.is_cvv_empty]),
     ?assertMatch(
         #domain_BankCard{
             payment_system_deprecated = mastercard,
