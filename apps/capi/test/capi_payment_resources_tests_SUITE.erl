@@ -817,7 +817,8 @@ create_applepay_tokenized_payment_resource_ok_test(Config) ->
     {bank_card, BankCard} = decrypt_payment_tool(PaymentToolToken),
     ?assertMatch(
         #domain_BankCard{
-            tokenization_method = dpan
+            tokenization_method = dpan,
+            token_provider_deprecated = applepay
         },
         BankCard
     ).

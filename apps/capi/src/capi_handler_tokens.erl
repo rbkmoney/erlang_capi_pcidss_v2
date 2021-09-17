@@ -539,7 +539,7 @@ process_tokenized_card_data_result(
         payment_system_deprecated = PaymentSystem,
         last_digits = get_tokenized_pan(Last4, PaymentData),
         token_provider_deprecated = TokenProvider,
-        is_cvv_empty = set_is_empty_cvv(TokenProvider, TokenizationMethod, BankCard),
+        is_cvv_empty = set_is_empty_cvv(TokenizationMethod, BankCard),
         exp_date = encode_exp_date(genlib_map:get(exp_date, ExtraCardData)),
         cardholder_name = genlib_map:get(cardholder, ExtraCardData),
         tokenization_method = TokenizationMethod
@@ -570,9 +570,9 @@ get_tokenization_method({tokenized_card, _}) ->
 % when cvv is empty, but is_cvv_empty = undefined, which forces routing to bypass
 % restrictions and crash adapter. This situation is
 % only applicable for GooglePay with tokenized bank card via browser.
-set_is_empty_cvv(googlepay, none, BankCard) ->
+set_is_empty_cvv(none, BankCard) ->
     BankCard#domain_BankCard.is_cvv_empty;
-set_is_empty_cvv(_, _, _) ->
+set_is_empty_cvv(_, _) ->
     undefined.
 
 get_payment_token_provider({yandex, _}) ->
