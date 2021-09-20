@@ -568,8 +568,7 @@ get_tokenization_method({tokenized_card, _}) ->
 % Do not drop is_cvv_empty flag for tokenized bank cards which looks like
 % simple bank card. This prevent wrong routing decisions in hellgate
 % when cvv is empty, but is_cvv_empty = undefined, which forces routing to bypass
-% restrictions and crash adapter. This situation is
-% only applicable for GooglePay with tokenized bank card via browser.
+% restrictions and crash adapter.
 set_is_empty_cvv(none, BankCard) ->
     BankCard#domain_BankCard.is_cvv_empty;
 set_is_empty_cvv(_, _) ->
