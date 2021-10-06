@@ -1166,4 +1166,7 @@ get_keysource(Key, Config) ->
     filename:join(?config(data_dir, Config), Key).
 
 gateway_merchant_id() ->
-    <<"test:PartyID:ShopID">>.
+    <<
+        "CwABAAAAIXBhcnR5LWE0ZWYtNGQwMy1iNjY2LWJkZWM0YjI2YzVmNwsAAgAAAC"
+        "BzaG9wLWE0ZWYtNGQwMy1iNjY2LWJkZWM0YjI2YzVmNwgAAwAAAAEA"
+    >>.
