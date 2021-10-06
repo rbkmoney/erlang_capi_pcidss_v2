@@ -800,6 +800,7 @@ create_applepay_tokenized_payment_resource_ok_test(Config) ->
     ),
     ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
     {ok, #{
+        <<"paymentToolToken">> := PaymentToolToken,
         <<"paymentToolDetails">> := Details = #{
             <<"paymentSystem">> := <<"mastercard">>,
             <<"cardNumberMask">> := <<"************7892">>,
@@ -815,7 +816,15 @@ create_applepay_tokenized_payment_resource_ok_test(Config) ->
             },
             <<"clientInfo">> => ClientInfo
         }),
-    false = maps:is_key(<<"first6">>, Details).
+    false = maps:is_key(<<"first6">>, Details),
+    {bank_card, BankCard} = decrypt_payment_tool(PaymentToolToken),
+    ?assertMatch(
+        #domain_BankCard{
+            tokenization_method = dpan,
+            token_provider_deprecated = applepay
+        },
+        BankCard
+    ).
 
 -spec create_googlepay_tokenized_payment_resource_ok_test(_) -> _.
 create_googlepay_tokenized_payment_resource_ok_test(Config) ->
@@ -835,6 +844,7 @@ create_googlepay_tokenized_payment_resource_ok_test(Config) ->
     ),
     ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
     {ok, #{
+        <<"paymentToolToken">> := PaymentToolToken,
         <<"paymentToolDetails">> := Details = #{
             <<"paymentSystem">> := <<"mastercard">>,
             <<"tokenProvider">> := <<"googlepay">>,
@@ -851,7 +861,14 @@ create_googlepay_tokenized_payment_resource_ok_test(Config) ->
             },
             <<"clientInfo">> => ClientInfo
         }),
-    ?assertEqual(error, maps:find(<<"first6">>, Details)).
+    ?assertEqual(error, maps:find(<<"first6">>, Details)),
+    {bank_card, BankCard} = decrypt_payment_tool(PaymentToolToken),
+    ?assertMatch(
+        #domain_BankCard{
+            tokenization_method = dpan
+        },
+        BankCard
+    ).
 
 -spec create_googlepay_plain_payment_resource_ok_test(_) -> _.
 create_googlepay_plain_payment_resource_ok_test(Config) ->
@@ -879,7 +896,8 @@ create_googlepay_plain_payment_resource_ok_test(Config) ->
     ClientInfo = #{<<"fingerprint">> => <<"test fingerprint">>},
     {ok, #{
         <<"paymentToolToken">> := PaymentToolToken,
-        <<"paymentToolDetails">> := Details = #{
+        <<"paymentToolDetails">> := #{
+            <<"tokenProvider">> := <<"googlepay">>,
             <<"paymentSystem">> := <<"mastercard">>,
             <<"cardNumberMask">> := <<"532130******7892">>,
             <<"first6">> := <<"532130">>,
@@ -895,7 +913,6 @@ create_googlepay_plain_payment_resource_ok_test(Config) ->
             },
             <<"clientInfo">> => ClientInfo
         }),
-    false = maps:is_key(<<"tokenProvider">>, Details),
     %% is_cvv_empty = true for GooglePay tokenized plain bank card
     %% see capi_handler_tokens:set_is_empty_cvv/2 for more info
     {bank_card, BankCard} = decrypt_payment_tool(PaymentToolToken),
@@ -903,7 +920,8 @@ create_googlepay_plain_payment_resource_ok_test(Config) ->
         #domain_BankCard{
             payment_system_deprecated = mastercard,
             last_digits = <<"7892">>,
-            is_cvv_empty = true
+            is_cvv_empty = true,
+            tokenization_method = none
         },
         BankCard
     ).
@@ -947,6 +965,7 @@ create_yandexpay_tokenized_payment_resource_ok_test(Config) ->
     PaymentTool = decrypt_payment_tool(EncryptedToken),
     ?assertMatch(
         {bank_card, #domain_BankCard{
+            tokenization_method = dpan,
             metadata = #{
                 <<"com.rbkmoney.payment-tool-provider">> :=
                     {obj, #{
