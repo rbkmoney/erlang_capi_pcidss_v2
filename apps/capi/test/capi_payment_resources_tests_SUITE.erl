@@ -6,6 +6,7 @@
 -include_lib("damsel/include/dmsl_payment_processing_thrift.hrl").
 -include_lib("damsel/include/dmsl_payment_tool_provider_thrift.hrl").
 -include_lib("bouncer_proto/include/bouncer_restriction_thrift.hrl").
+-include_lib("bouncer_proto/include/bouncer_context_v1_thrift.hrl").
 -include_lib("binbase_proto/include/binbase_binbase_thrift.hrl").
 -include_lib("cds_proto/include/cds_proto_storage_thrift.hrl").
 -include_lib("capi_dummy_data.hrl").
@@ -73,6 +74,11 @@
     },
     <<"clientInfo">> => #{<<"fingerprint">> => <<"test fingerprint">>}
 }).
+
+%% Этот ID закодирована в метаданных токена capi_ct_helper:issue_token
+%% как <<"invoice_link">> =>  <<"linked-invoice-id">>
+%% извлекается при создании платежного токена
+%% в capi_handler_tokens:make_payment_token_bouncer_data
 -define(LINKED_INVOICE_ID, <<"linked-invoice-id">>).
 
 -define(badresp(Code), {error, {Code, #{}}}).
@@ -1133,9 +1139,18 @@ payment_token_data_test(Config) ->
         }),
     {ok, TokenData} = capi_crypto:decode_token(PaymentToolToken),
     #{payment_tool := PaymentTool} = TokenData,
+    #{valid_until := ValidUntil} = TokenData,
     #{bouncer_data := BouncerData} = TokenData,
     ?assertEqual({payment_terminal, {domain_PaymentTerminal, undefined, euroset}}, PaymentTool),
-    ?assertEqual(#{invoice => ?LINKED_INVOICE_ID}, BouncerData).
+    ?assertEqual(
+        #bctx_v1_ContextPaymentTool{
+            scope = #bctx_v1_AuthScope{
+                invoice = #bouncer_base_Entity{id = ?LINKED_INVOICE_ID}
+            },
+            expiration = capi_utils:deadline_to_binary(ValidUntil)
+        },
+        BouncerData
+    ).
 
 -spec payment_token_valid_until_test(_) -> _.
 payment_token_valid_until_test(Config) ->

@@ -105,23 +105,19 @@ process_request('CreatePaymentResource' = OperationID, Req, Context, Resolution)
                 #{<<"paymentToolType">> := <<"MobileCommerceData">>} ->
                     {process_mobile_commerce_data(Data, Context), <<>>, undefined}
             end,
-        TokenData = #{
+        ValidUntil = make_payment_token_deadline(PaymentToolDeadline),
+        BouncerData = make_payment_token_bouncer_data(ValidUntil, Context),
+        Token = capi_crypto:encode_token(#{
             payment_tool => PaymentTool,
-            valid_until => make_payment_token_deadline(PaymentToolDeadline),
-            bouncer_data => make_payment_token_bouncer_data(Context)
-        },
+            valid_until => ValidUntil,
+            bouncer_data => BouncerData
+        }),
         PaymentResource = #domain_DisposablePaymentResource{
             payment_tool = PaymentTool,
             payment_session_id = PaymentSessionID,
             client_info = capi_handler_encoder:encode_client_info(ClientInfo)
         },
-        {ok,
-            {201, #{},
-                capi_handler_decoder:decode_disposable_payment_resource(
-                    PaymentResource,
-                    capi_crypto:encode_token(TokenData),
-                    maps:get(valid_until, TokenData)
-                )}}
+        {ok, {201, #{}, capi_handler_decoder:decode_disposable_payment_resource(PaymentResource, Token, ValidUntil)}}
     catch
         Result -> Result
     end.
@@ -169,11 +165,6 @@ delete_query_params(Url) ->
 
 %%
 
--spec payment_token_deadline() -> capi_utils:deadline().
-payment_token_deadline() ->
-    Lifetime = genlib_app:env(capi_pcidss, payment_tool_token_lifetime, ?DEFAULT_PAYMENT_TOOL_TOKEN_LIFETIME),
-    lifetime_to_deadline(Lifetime).
-
 % Ограничиваем время жизни платежного токена временем жизни платежного инструмента.
 % Если время жизни платежного инструмента не задано, то интервалом заданным в настройках.
 -spec make_payment_token_deadline(capi_utils:deadline()) -> capi_utils:deadline().
@@ -182,16 +173,25 @@ make_payment_token_deadline(undefined) ->
 make_payment_token_deadline(PaymentToolDeadline) ->
     erlang:min(PaymentToolDeadline, payment_token_deadline()).
 
--spec make_payment_token_bouncer_data(capi_handler:processing_context()) -> capi_crypto:bouncer_data().
-make_payment_token_bouncer_data(Context) ->
+-spec payment_token_deadline() -> capi_utils:deadline().
+payment_token_deadline() ->
+    Lifetime = genlib_app:env(capi_pcidss, payment_tool_token_lifetime, ?DEFAULT_PAYMENT_TOOL_TOKEN_LIFETIME),
+    lifetime_to_deadline(Lifetime).
+
+%% Перекладываем данные привязки из метаданных AcessToken в токен платежного средства
+%% Данные лежат в формате ContextPaymentTool
+%% При создании платежей он будет использован для передачи в bouncer
+-spec make_payment_token_bouncer_data(capi_utils:deadline(), capi_handler:processing_context()) ->
+    capi_crypto:bouncer_data().
+make_payment_token_bouncer_data(ValidUntil, Context) ->
     AuthContext = capi_auth:extract_auth_context(Context),
-    %% Перекладываем данные привязки из метаданных AcessToken в токен платежного средства
-    %% Данные лежат в формате прототипа capi_bouncer_context
-    %% При создании платежей прототип будет использован для создания ContextPaymentTool
-    genlib_map:compact(#{
-        invoice => capi_auth:get_invoice_link(AuthContext),
-        customer => capi_auth:get_customer_link(AuthContext)
-    }).
+    capi_bouncer_context:build_payment_tool_link(
+        genlib_map:compact(#{
+            invoice => capi_auth:get_invoice_link(AuthContext),
+            customer => capi_auth:get_customer_link(AuthContext),
+            expiration => capi_utils:deadline_to_binary(ValidUntil)
+        })
+    ).
 
 %%
 

@@ -4,11 +4,12 @@
 
 -type fragment() :: bouncer_client:context_fragment().
 -type acc() :: bouncer_context_helpers:context_fragment().
-
+-type payment_tool_context() :: bouncer_context_v1_thrift:'ContextPaymentTool'().
 -type fragments() :: {acc(), _ExternalFragments :: #{_ID => fragment()}}.
 
 -export_type([fragment/0]).
 -export_type([acc/0]).
+-export_type([payment_tool_context/0]).
 -export_type([fragments/0]).
 
 -type prototypes() :: [
@@ -28,9 +29,14 @@
     expiration => timestamp()
 }.
 
+-type prototype_payment_tool_link() :: #{
+    invoice => entity_id(),
+    customer => entity_id(),
+    expiration => timestamp()
+}.
+
 -type entity_id() :: bouncer_base_thrift:'EntityID'().
 -type timestamp() :: bouncer_base_thrift:'Timestamp'().
-
 -type ip() :: dmsl_domain_thrift:'IPAddress'().
 
 -export_type([prototypes/0]).
@@ -39,6 +45,7 @@
 
 -export([new/0]).
 -export([build/3]).
+-export([build_payment_tool_link/1]).
 
 %%
 
@@ -82,6 +89,16 @@ build(payment_tool, Params, Acc, _WoodyCtx) ->
             %% Синтетический срок действия legacy токенов capi_handler_tokens:decode_merchant_id_fallback
             expiration = maps:get(expiration, Params, undefined)
         }
+    }.
+
+-spec build_payment_tool_link(prototype_payment_tool_link()) -> payment_tool_context().
+build_payment_tool_link(Prototype) ->
+    #bctx_v1_ContextPaymentTool{
+        scope = #bctx_v1_AuthScope{
+            invoice = maybe_entity(invoice, Prototype),
+            customer = maybe_entity(customer, Prototype)
+        },
+        expiration = maps:get(expiration, Prototype, undefined)
     }.
 
 maybe_with(Name, Params, Then) ->

@@ -147,6 +147,7 @@ start_capi(Config, ExtraEnv) ->
 get_keysource(Key, Config) ->
     filename:join(?config(data_dir, Config), Key).
 
+% Access токены созданные в erlan_capi_v2
 -spec issue_token(_) -> binary() | no_return().
 issue_token(unlimited) ->
     <<
