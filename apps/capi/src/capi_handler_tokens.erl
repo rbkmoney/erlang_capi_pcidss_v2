@@ -507,7 +507,6 @@ process_tokenized_card_data_result(
     ExtraCardData,
     #paytoolprv_UnwrappedPaymentTool{
         card_info = #paytoolprv_CardInfo{
-            payment_system_deprecated = PaymentSystem,
             last_4_digits = Last4
         },
         payment_data = PaymentData,
@@ -515,14 +514,14 @@ process_tokenized_card_data_result(
         valid_until = ValidUntil
     }
 ) ->
-    TokenProvider = get_payment_token_provider(PaymentDetails),
+    {TokenProvider, TokenProviderDeprecated} = get_payment_token_provider(PaymentDetails),
     TokenizationMethod = get_tokenization_method(PaymentData),
     {NS, ProviderMetadata} = extract_payment_tool_provider_metadata(PaymentDetails),
     BankCard1 = BankCard#domain_BankCard{
         bin = get_tokenized_bin(PaymentData),
-        payment_system_deprecated = PaymentSystem,
         last_digits = get_tokenized_pan(Last4, PaymentData),
-        token_provider_deprecated = TokenProvider,
+        payment_token = #domain_BankCardTokenServiceRef{id = TokenProvider},
+        token_provider_deprecated = TokenProviderDeprecated,
         is_cvv_empty = set_is_empty_cvv(TokenizationMethod, BankCard),
         exp_date = encode_exp_date(genlib_map:get(exp_date, ExtraCardData)),
         cardholder_name = genlib_map:get(cardholder, ExtraCardData),
@@ -559,13 +558,13 @@ set_is_empty_cvv(_, _) ->
     undefined.
 
 get_payment_token_provider({yandex, _}) ->
-    yandexpay;
+    {<<"YANDEX PAY">>, yandexpay};
 get_payment_token_provider({apple, _}) ->
-    applepay;
+    {<<"APPLE PAY">>, applepay};
 get_payment_token_provider({google, _}) ->
-    googlepay;
+    {<<"GOOGLE PAY">>, googlepay};
 get_payment_token_provider({samsung, _}) ->
-    samsungpay.
+    {<<"SAMSUNG PAY">>, samsungpay}.
 
 %% TODO
 %% All this stuff deserves its own module I believe. These super-long names are quite strong hints.
