@@ -140,7 +140,7 @@ start_capi(Config, ExtraEnv) ->
                         user_email => ?TK_META_USER_EMAIL
                     }
                 }},
-                {token_services, #{
+                {bank_card_token_service_mapping, #{
                     googlepay => <<"GOOGLE PAY">>,
                     applepay => <<"APPLE PAY">>,
                     samsungpay => <<"SAMSUNG PAY">>,

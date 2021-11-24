@@ -54,12 +54,12 @@ get_logic_handler_info() ->
     end.
 
 validate_token_services() ->
-    TokenServices = genlib_app:env(capi_pcidss, token_services),
+    TokenServices = genlib_app:env(capi_pcidss, bank_card_token_service_mapping),
     lists:foreach(
         fun(TokenProvider) ->
             case maps:find(TokenProvider, TokenServices) of
                 error ->
-                    exit(invalid_token_services);
+                    exit({invalid_bank_card_token_service, {missed_token_provider, TokenProvider, TokenServices}});
                 {ok, _} ->
                     ok
             end
