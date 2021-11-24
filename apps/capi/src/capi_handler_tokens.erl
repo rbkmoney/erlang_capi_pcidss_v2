@@ -1,5 +1,7 @@
 -module(capi_handler_tokens).
 
+-type token_provider() :: yandexpay | applepay | googlepay | samsungpay.
+
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
 -include_lib("cds_proto/include/cds_proto_storage_thrift.hrl").
 -include_lib("tds_proto/include/tds_proto_storage_thrift.hrl").
@@ -11,6 +13,7 @@
 -behaviour(capi_handler).
 
 -export([prepare/3]).
+-export([get_token_providers/0]).
 
 -import(capi_handler_utils, [logic_error/2, validation_error/1]).
 
@@ -566,6 +569,10 @@ get_payment_token_provider({google, _}) ->
     googlepay;
 get_payment_token_provider({samsung, _}) ->
     samsungpay.
+
+-spec get_token_providers() -> [token_provider()].
+get_token_providers() ->
+    [yandexpay, applepay, googlepay, samsungpay].
 
 get_token_service_id(TokenProvider) ->
     TokenServices = genlib_app:env(capi_pcidss, token_services),

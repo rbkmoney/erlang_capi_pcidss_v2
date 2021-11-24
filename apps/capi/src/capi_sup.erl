@@ -23,6 +23,7 @@ start_link() ->
 
 -spec init([]) -> {ok, {supervisor:sup_flags(), [supervisor:child_spec()]}}.
 init([]) ->
+    validate_token_services(),
     LechiffreOpts = genlib_app:env(capi_pcidss, lechiffre_opts),
     LechiffreSpec = lechiffre:child_spec(lechiffre, LechiffreOpts),
     {LogicHandler, LogicHandlerSpecs} = get_logic_handler_info(),
@@ -51,3 +52,17 @@ get_logic_handler_info() ->
         undefined ->
             exit(undefined_service_type)
     end.
+
+validate_token_services() ->
+    TokenServices = genlib_app:env(capi_pcidss, token_services),
+    lists:foreach(
+        fun(TokenProvider) ->
+            case maps:find(TokenProvider, TokenServices) of
+                error ->
+                    exit(invalid_token_services);
+                {ok, _} ->
+                    ok
+            end
+        end,
+        capi_handler_tokens:get_token_providers()
+    ).
