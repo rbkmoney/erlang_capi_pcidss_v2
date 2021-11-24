@@ -139,6 +139,12 @@ start_capi(Config, ExtraEnv) ->
                         user_id => ?TK_META_USER_ID,
                         user_email => ?TK_META_USER_EMAIL
                     }
+                }},
+                {token_services, #{
+                    googlepay => <<"GOOGLE PAY">>,
+                    applepay => <<"APPLE PAY">>,
+                    samsungpay => <<"SAMSUNG PAY">>,
+                    yandexpay => <<"YANDEX PAY">>
                 }}
             ],
     start_app(capi_pcidss, CapiEnv).
