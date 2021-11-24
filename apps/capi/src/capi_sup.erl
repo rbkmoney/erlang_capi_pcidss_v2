@@ -59,7 +59,7 @@ validate_token_services() ->
         fun(TokenProvider) ->
             case maps:find(TokenProvider, TokenServices) of
                 error ->
-                    exit({invalid_bank_card_token_service, {missed_token_provider, TokenProvider, TokenServices}});
+                    exit({invalid, bank_card_token_service_mapping, {missed_token_provider, TokenProvider}});
                 {ok, _} ->
                     ok
             end
