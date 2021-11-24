@@ -575,7 +575,7 @@ get_token_providers() ->
     [yandexpay, applepay, googlepay, samsungpay].
 
 get_token_service_id(TokenProvider) ->
-    TokenServices = genlib_app:env(capi_pcidss, token_services),
+    TokenServices = genlib_app:env(capi_pcidss, bank_card_token_service_mapping),
     maps:get(TokenProvider, TokenServices).
 
 %% TODO
