@@ -3,6 +3,8 @@
 -export([get_subject_id/1]).
 -export([get_subject_data/1]).
 -export([get_subject_email/1]).
+-export([get_invoice_link/1]).
+-export([get_customer_link/1]).
 
 -export([preauthorize_api_key/1]).
 -export([authorize_api_key/3]).
@@ -47,6 +49,16 @@ get_subject_data(?authorized(#{auth_data := AuthData})) ->
 -spec get_subject_email(auth_context()) -> binary() | undefined.
 get_subject_email(?authorized(#{auth_data := AuthData})) ->
     get_user_email(AuthData).
+
+-spec get_invoice_link(auth_context()) -> binary() | undefined.
+get_invoice_link(?authorized(#{auth_data := AuthData})) ->
+    Metadata = token_keeper_auth_data:get_metadata(AuthData),
+    get_metadata(<<"invoice_link">>, Metadata).
+
+-spec get_customer_link(auth_context()) -> binary() | undefined.
+get_customer_link(?authorized(#{auth_data := AuthData})) ->
+    Metadata = token_keeper_auth_data:get_metadata(AuthData),
+    get_metadata(<<"customer_link">>, Metadata).
 
 -spec preauthorize_api_key(swag_server:api_key()) -> {ok, preauth_context()} | {error, _Reason}.
 preauthorize_api_key(ApiKey) ->

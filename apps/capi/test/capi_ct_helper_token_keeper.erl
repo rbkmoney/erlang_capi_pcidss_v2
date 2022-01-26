@@ -57,7 +57,7 @@ user_session_handler() ->
             {user, [id, email, realm]},
             {auth, [{method, <<"SessionToken">>}, expiration, token]}
         ],
-        [user_session_meta]
+        [user_session_meta, invoice_link, customer_link]
     ).
 
 -spec invoice_access_token(PartyID :: binary(), InvoiceID :: binary()) -> handler_fun().
@@ -72,7 +72,7 @@ invoice_access_token(PartyID, InvoiceID) ->
                 {scope, [[{party, PartyID}, {invoice, InvoiceID}]]}
             ]}
         ],
-        [api_key_meta, consumer_meta]
+        [api_key_meta, consumer_meta, invoice_link]
     ).
 
 -spec invoice_template_access_token(PartyID :: binary(), InvoiceTmeplateID :: binary()) -> handler_fun().
@@ -102,7 +102,7 @@ customer_access_token(PartyID, CustomerID) ->
                 {scope, [[{party, PartyID}, {customer, CustomerID}]]}
             ]}
         ],
-        [api_key_meta]
+        [api_key_meta, customer_link]
     ).
 
 -spec api_key_handler(PartyID :: binary()) -> handler_fun().
@@ -297,6 +297,10 @@ make_metadata_by_spec(api_key_meta, TokenInfo) ->
 make_metadata_by_spec(consumer_meta, TokenInfo) ->
     genlib_map:compact(#{
         ?TK_META_TOKEN_CONSUMER => uac_authorizer_jwt:get_claim(<<"cons">>, TokenInfo, undefined)
+    });
+make_metadata_by_spec(invoice_link, TokenInfo) ->
+    genlib_map:compact(#{
+        <<"invoice_link">> => uac_authorizer_jwt:get_claim(<<"invoice_link">>, TokenInfo, undefined)
     }).
 
 encode_context(Context) ->

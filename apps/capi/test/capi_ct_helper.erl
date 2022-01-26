@@ -107,7 +107,7 @@ start_app(AppName, Env) ->
 -spec start_token_keeper(pid(), config()) -> [app_name()].
 start_token_keeper(SupPid, Config) ->
     ok = capi_ct_helper_token_keeper:configure_uac(Config),
-    capi_ct_helper_token_keeper:mock_client(capi_ct_helper_token_keeper:user_session_handler(), SupPid).
+    capi_ct_helper_token_keeper:mock_client(capi_ct_helper_token_keeper:invoice_access_token(?STRING, ?STRING), SupPid).
 
 -spec start_capi(config()) -> [app_name()].
 start_capi(Config) ->
@@ -153,13 +153,15 @@ start_capi(Config, ExtraEnv) ->
 get_keysource(Key, Config) ->
     filename:join(?config(data_dir, Config), Key).
 
+% Access токены созданные в erlan_capi_v2
 -spec issue_token(_) -> binary() | no_return().
 issue_token(unlimited) ->
     <<
-        "eyJhbGciOiJQUzI1NiIsImtpZCI6Il90a1hzNWlBYXNIckhpb21tMlNaaGtvR2tMdmZXcllaMkZ0bnZ2VDhFSnMiLCJ0eXAi"
-        "OiJKV1QifQ.eyJURVNUIjoiVEVTVCIsImVtYWlsIjoiYmxhQGJsYS5ydSIsImV4cCI6MCwianRpIjoiVEVTVCIsInJlc291c"
-        "mNlX2FjY2VzcyI6eyJjb21tb24tYXBpIjp7InJvbGVzIjpbInBheW1lbnRfcmVzb3VyY2VzOndyaXRlIl19fSwic3ViIjoiV"
-        "EVTVCJ9.I0RPu_ESO3HQJsWjhuVEpvpOZat9Vz6K_NzNzjAss5RNQVd-uf4Opc493rGfxtfsIMUdZtb0Pu-6Fz_SH-YuzA"
+        "eyJhbGciOiJQUzI1NiIsImtpZCI6Il90a1hzNWlBYXNIckhpb21tMlNaaGtvR2tMdmZXcllaMkZ0bnZ2VDhFSnMiLCJ0eXAiOiJKV1"
+        "QifQ.eyJURVNUIjoiVEVTVCIsImVtYWlsIjoiYmxhQGJsYS5ydSIsImV4cCI6MCwiaW52b2ljZV9saW5rIjoibGlua2VkLWludm9pY"
+        "2UtaWQiLCJqdGkiOiIxV2N3NnJmM2pyVSIsInJlc291cmNlX2FjY2VzcyI6eyJjb21tb24tYXBpIjp7InJvbGVzIjpbInBheW1lbnR"
+        "fcmVzb3VyY2VzOndyaXRlIl19fSwic3ViIjoiVEVTVCJ9.X64qzGhHAYxJhgjIv-kY7h2crpOXx_OGOBIrf3mbKt3jcjLn4Jf65zhu"
+        "pORmS-RJNzhAIgzX1N78qhpQwYKL9Q"
     >>;
 issue_token(_LifeTime) ->
     <<
